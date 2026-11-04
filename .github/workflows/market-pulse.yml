@@ -1,0 +1,47 @@
+name: Market Pulse
+
+on:
+  schedule:
+    - cron: '*/10 13-21 * * 1-5'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch quotes
+        run: node scripts/fetch-quotes.mjs
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+          FORCE: ${{ github.event_name != 'schedule' }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
