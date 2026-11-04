@@ -60,9 +60,6 @@ button[aria-pressed="true"]{border-color:var(--amber)}
 button[aria-pressed="true"] .led{background:var(--amber);box-shadow:0 0 10px var(--amber)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .sep{width:1px;align-self:stretch;background:var(--line)}
-.keybox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
-.keybox label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.keybox input{flex:1;min-width:180px;background:#070a0f;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font-family:var(--f-display);font-size:14px}
 .note{font-size:12px;color:var(--muted);line-height:1.5}
 .note a{color:var(--amber)}
 </style>
@@ -78,7 +75,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
   </header>
 
   <section class="annun" aria-label="Session read">
-    <div class="lamp"><div class="k">Feed</div><div class="v" id="feed"><span class="dot" id="dot"></span><span id="feedTxt">Starting…</span></div></div>
+    <div class="lamp"><div class="k">Feed</div><div class="v" id="feed"><span class="dot" id="dot"></span><span id="feedTxt">Loading…</span></div></div>
     <div class="lamp"><div class="k">Tape</div><div class="v" id="tape">—</div></div>
     <div class="lamp"><div class="k">Average move</div><div class="v" id="avg">—</div><div class="bar"><i id="avgBar"></i></div></div>
     <div class="lamp"><div class="k">Leadership · Nasdaq − Dow</div><div class="v" id="lead">—</div><div class="bar"><i id="leadBar"></i></div></div>
@@ -87,62 +84,48 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
   <section class="cluster" id="cluster" aria-label="Index gauges"></section>
 
   <div class="rail">
-    <button id="liveBtn" aria-pressed="false"><span class="led"></span>Live feed</button>
+    <button id="liveBtn" aria-pressed="true"><span class="led"></span>Live data</button>
     <span class="sep"></span>
     <button id="simBtn" aria-pressed="false"><span class="led"></span>Sim tape</button>
     <button data-scn="rally">Rally</button>
     <button data-scn="selloff">Selloff</button>
     <button data-scn="crash">Flash crash</button>
-    <span class="sep"></span>
-    <button id="setBtn" aria-expanded="false" aria-controls="keyForm">Feed settings</button>
   </div>
-
-  <form class="keybox" id="keyForm" hidden>
-    <label for="keyIn">Finnhub API key</label>
-    <input id="keyIn" type="password" autocomplete="off" placeholder="Paste your free key">
-    <button type="submit">Save and connect</button>
-  </form>
-  <p class="note">Live data comes from Finnhub quotes for DIA, SPY and QQQ, the ETFs that track the Dow, S&amp;P 500 and Nasdaq-100. Their daily percent change tracks the index within a few hundredths. Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io</a>; it is stored only in this browser. Polls every 15 seconds while the market is open. Rally, Selloff and Flash crash switch to simulation; press Live feed to go back.</p>
+  <p class="note" id="srcNote">Quotes from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff and Flash crash switch to simulation; press Live data to go back.</p>
 </div>
 
 <script>
-/* ===== CONFIG: paste your Finnhub key between the quotes before pushing to GitHub. =====
-   Visitors then get live data with no setup. A key saved in a visitor's browser overrides this. */
-const DEFAULT_KEY = '032Y78rEC9fq8lpJAcvUFNrTrv8UUrwi';
-
 const IDX=[
-  {key:'DOW',sym:'DIA',name:'Dow Jones',v:2.19,beta:.8},
-  {key:'S&P',sym:'SPY',name:'S&P 500',v:1.75,beta:1},
-  {key:'NDX',sym:'QQQ',name:'Nasdaq-100',v:1.55,beta:1.35}
+  {id:'dow',key:'DOW',name:'Dow Jones',v:2.19,beta:.8},
+  {id:'spx',key:'S&P',name:'S&P 500',v:1.75,beta:1},
+  {id:'ndx',key:'NASDAQ',name:'Nasdaq Composite',v:1.55,beta:1.35}
 ];
 const TAU=Math.PI*2, RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const C={up:'#3dff8a',down:'#ff3d6e',amber:'#ffb547',ink:'#d9e0ea',muted:'#7d889a'};
-const API='https://finnhub.io/api/v1/';
 const ang=v=>(270+Math.max(-5.2,Math.min(5.2,v))/5*135)*Math.PI/180;
 const fmt=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(2)+'%';
-const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
 const cluster=document.getElementById('cluster');
 
 const G=IDX.map((d,i)=>{
   cluster.insertAdjacentHTML('beforeend',`<div class="bay">
     <canvas id="cv${i}" role="img" aria-label="${d.name} gauge"></canvas>
-    <div class="row"><span>Last · ${d.sym}</span><span class="hl" id="px${i}">—</span></div>
+    <div class="row"><span id="sy${i}">Last</span><span class="hl" id="px${i}">—</span></div>
     <div class="row"><span>Session range</span><span class="hl" id="hl${i}">—</span></div></div>`);
   const cv=document.getElementById('cv'+i);
-  const g={...d,i,cv,ctx:cv.getContext('2d'),size:0,dpr:1,target:d.v,pos:0,vel:0,hist:[0],hi:0,lo:0,anchor:d.v,price:null};
+  const g={...d,i,cv,ctx:cv.getContext('2d'),size:0,dpr:1,target:d.v,pos:0,vel:0,hist:[0],hi:0,lo:0,anchor:d.v,price:null,sym:null};
   new ResizeObserver(()=>{const s=cv.clientWidth,dpr=devicePixelRatio||1;g.size=s;g.dpr=dpr;cv.width=s*dpr;cv.height=s*dpr}).observe(cv);
   return g;
 });
 
 function setT(g,v,hi,lo){
   g.target=Math.round(v*100)/100;
-  const h=g.hist;
-  if(h.length<2||Math.abs(h[h.length-1]-g.target)>.001||mode==='live'){h.push(g.target);if(h.length>400)h.shift()}
+  if(mode==='sim'){g.hist.push(g.target);if(g.hist.length>150)g.hist.shift()}
   g.hi=hi!=null?hi:Math.max(g.hi,g.target);
   g.lo=lo!=null?lo:Math.min(g.lo,g.target);
   document.getElementById('hl'+g.i).textContent=fmt(g.lo)+'  →  '+fmt(g.hi);
-  document.getElementById('px'+g.i).textContent=g.price!=null?'$'+g.price.toFixed(2):'—';
+  document.getElementById('sy'+g.i).textContent=g.sym?'Last · '+g.sym:'Last';
+  document.getElementById('px'+g.i).textContent=g.price==null?'—':
+    (g.isIndex?'':'$')+g.price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   readout();
 }
 
@@ -226,66 +209,47 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
-/* ---------- Feed state ---------- */
-let mode='idle',apiKey=store.get('qtiPulseKey')||new URLSearchParams(location.search).get('key')||DEFAULT_KEY;
-let pollT=null,statusT=null,simT=null,marketOpen=null;
+/* ---------- Live data from data.json (written by the GitHub Action) ---------- */
+let mode='live',data=null,pollT=null,simT=null;
 const dot=document.getElementById('dot'),feedTxt=document.getElementById('feedTxt');
 const liveBtn=document.getElementById('liveBtn'),simBtn=document.getElementById('simBtn');
 function feed(cls,txt){dot.className='dot '+cls;feedTxt.textContent=txt}
-const etTime=d=>d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit',timeZone:'America/New_York'})+' ET';
+const et=d=>d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'})+' ET';
 
-function saveHist(){if(mode!=='live')return;store.set('qtiPulseHist',JSON.stringify({d:today(),h:G.map(g=>g.hist)}))}
-function loadHist(){try{const o=JSON.parse(store.get('qtiPulseHist')||'null');if(o&&o.d===today())G.forEach((g,i)=>{if(Array.isArray(o.h[i]))g.hist=o.h[i]})}catch(e){}}
-
-async function getJSON(path){
-  const r=await fetch(API+path+(path.includes('?')?'&':'?')+'token='+encodeURIComponent(apiKey));
-  if(r.status===401||r.status===403)throw new Error('key');
-  if(r.status===429)throw new Error('rate');
-  if(!r.ok)throw new Error('http');
-  return r.json();
+function applyData(){
+  if(!data||!data.quotes)return;
+  const isIndex=data.source!=='etf';
+  G.forEach(g=>{const q=data.quotes[g.id];if(!q)return;
+    g.sym=q.sym;g.price=q.price;g.isIndex=isIndex;g.name=q.name||g.name;
+    const h=(data.history&&data.history[g.id])||[];
+    g.hist=[0,...h.map(p=>p[1])];
+    const hi=q.highPct!=null?Math.max(q.highPct,q.changePct,0):null,lo=q.lowPct!=null?Math.min(q.lowPct,q.changePct,0):null;
+    setT(g,q.changePct,hi,lo)});
+  const upd=new Date(data.updated),age=(Date.now()-upd)/60000,qt=Math.max(...Object.values(data.quotes).map(q=>q.ts||0));
+  const when=et(qt?new Date(qt*1000):upd);
+  if(!data.marketOpen)feed('','Market closed · as of '+when);
+  else if(age>30)feed('sim','Delayed · as of '+when);
+  else feed('on','Live · as of '+when);
+  document.getElementById('srcNote').textContent=(isIndex
+    ?'Index quotes (^DJI, ^GSPC, ^IXIC)'
+    :'ETF proxies (DIA, SPY, QQQ) because index quotes are not on this data plan')+
+    ' from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff and Flash crash switch to simulation; press Live data to go back.';
 }
 
-async function checkStatus(){
-  try{const s=await getJSON('stock/market-status?exchange=US');marketOpen=!!s.isOpen;
-    G.sess=s.session||(s.isOpen?'regular':'closed')}catch(e){marketOpen=null}
-}
-
-async function poll(){
-  if(mode!=='live')return;
+async function load(){
   try{
-    const qs=await Promise.all(G.map(g=>getJSON('quote?symbol='+g.sym)));
-    if(mode!=='live')return;
-    let stamp=0;
-    qs.forEach((q,i)=>{const g=G[i];
-      if(!q||!q.pc){return}
-      g.price=q.c;stamp=Math.max(stamp,q.t||0);
-      const dp=q.dp!=null?q.dp:(q.c-q.pc)/q.pc*100;
-      const hi=q.h?(q.h-q.pc)/q.pc*100:null,lo=q.l?(q.l-q.pc)/q.pc*100:null;
-      setT(g,dp,hi!=null?Math.max(hi,dp,0):null,lo!=null?Math.min(lo,dp,0):null)});
-    saveHist();
-    const when=stamp?etTime(new Date(stamp*1000)):etTime(new Date());
-    if(marketOpen===false)feed('','Market closed · last '+when);
-    else feed('on','Live · '+when);
+    const r=await fetch('data.json?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error(r.status);
+    data=await r.json();
+    if(mode==='live')applyData();
   }catch(e){
-    if(e.message==='key'){feed('err','Key rejected, check it');stopLive();showKey(true);return}
-    if(e.message==='rate'){feed('err','Rate limited, retrying');}
-    else feed('err','Feed error, retrying');
+    if(mode==='live'&&!data)feed('err','No data yet · showing snapshot');
   }
-  clearTimeout(pollT);pollT=setTimeout(poll,marketOpen===false?120000:15000);
+  clearTimeout(pollT);pollT=setTimeout(load,60000);
 }
-
-async function startLive(){
-  if(!apiKey){feed('err','Add a Finnhub key below');document.getElementById('keyIn').focus();return}
-  stopSim();mode='live';jitter=false;liveBtn.setAttribute('aria-pressed','true');
-  G.forEach(g=>{g.hist=[0];g.hi=0;g.lo=0});loadHist();
-  feed('sim','Connecting…');
-  await checkStatus();clearInterval(statusT);statusT=setInterval(checkStatus,60000);
-  poll();
-}
-function stopLive(){clearTimeout(pollT);clearInterval(statusT);if(mode==='live')mode='idle';liveBtn.setAttribute('aria-pressed','false')}
 
 const randn=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v)};
-function enterSim(){if(mode!=='sim'){stopLive();mode='sim';G.forEach(g=>{g.anchor=g.target;g.price=null})}feed('sim','Simulation')}
+function enterSim(){if(mode!=='sim'){mode='sim';liveBtn.setAttribute('aria-pressed','false');G.forEach(g=>{g.anchor=g.target})}feed('sim','Simulation')}
 function stopSim(){clearInterval(simT);simT=null;simBtn.setAttribute('aria-pressed','false');jitter=false}
 simBtn.onclick=()=>{
   if(simT){stopSim();return}
@@ -298,22 +262,15 @@ const scn={
   crash:()=>{G.forEach(g=>setT(g,-4.6*g.beta/1.1));setTimeout(()=>{if(mode==='sim')G.forEach(g=>{g.anchor=-1.2*g.beta;setT(g,g.anchor)})},1600)}
 };
 document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{enterSim();scn[b.dataset.scn]()});
-liveBtn.onclick=()=>{if(mode==='live'){stopLive();feed('','Paused')}else startLive()};
-
-const keyIn=document.getElementById('keyIn');keyIn.value=apiKey;
-const keyForm=document.getElementById('keyForm'),setBtn=document.getElementById('setBtn');
-const showKey=on=>{keyForm.hidden=!on;setBtn.setAttribute('aria-expanded',on)};
-setBtn.onclick=()=>showKey(keyForm.hidden);
-showKey(!apiKey);
-keyForm.addEventListener('submit',e=>{e.preventDefault();
-  apiKey=keyIn.value.trim()||DEFAULT_KEY;store.set('qtiPulseKey',keyIn.value.trim());showKey(!apiKey);startLive()});
+liveBtn.onclick=()=>{stopSim();mode='live';liveBtn.setAttribute('aria-pressed','true');
+  if(data)applyData();else feed('err','No data yet · showing snapshot');load()};
 
 const ck=document.getElementById('clock');
 const tick=()=>ck.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 tick();setInterval(tick,1000);
 
 G.forEach(g=>setT(g,g.v));
-if(apiKey)startLive();else feed('sim','Snapshot · add key for live');
+load();
 requestAnimationFrame(loop);
 </script>
 </body>
