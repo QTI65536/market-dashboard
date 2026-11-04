@@ -1,11 +1,12 @@
 name: Market Pulse
 
 on:
-  schedule:
-    # Every 10 minutes, 13:00–21:59 UTC on weekdays. Covers 9:30–4:00 ET in both
-    # daylight and standard time; the script skips API calls outside market hours.
-    - cron: '*/10 13-21 * * 1-5'
   workflow_dispatch:
+    inputs:
+      force:
+        description: Fetch even outside market hours
+        type: boolean
+        default: true
   push:
     branches: [main]
 
@@ -39,7 +40,7 @@ jobs:
         env:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           PAGES_URL: ${{ steps.pages.outputs.base_url }}
-          FORCE: ${{ github.event_name != 'schedule' }}
+          FORCE: ${{ github.event_name == 'push' || inputs.force }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
