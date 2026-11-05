@@ -164,6 +164,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
       <div class="rail">
         <button data-scn="rally">Rally</button>
         <button data-scn="selloff">Selloff</button>
+        <button data-scn="choppy">Choppy</button>
         <button data-scn="crash">Flash crash</button>
       </div>
       </div>
@@ -211,6 +212,7 @@ function setT(g,v,hi,lo){
 function readout(){
   const vs=G.map(g=>g.target),avg=vs.reduce((a,b)=>a+b,0)/vs.length,lead=G[2].target-G[0].target,up=vs.filter(v=>v>0).length;
   FL.tp=avg;FL.tb=lead;
+  FL.rough=Math.max(...G.map(g=>(g.hi-g.lo)-Math.abs(g.target)))+.5*Math.max(0,Math.abs(lead)-1.2);
   let t,c;
   if(avg>=3){t='Melt-up';c=C.up}else if(avg>=1){t='Broad rally';c=C.up}else if(avg>0){t=up===3?'Green tape':'Mixed, leaning green';c=C.up}
   else if(avg>-1){t=up===0?'Soft tape':'Mixed, leaning red';c=C.down}else if(avg>-3){t='Risk-off';c=C.down}else{t='Capitulation';c=C.down}
@@ -305,7 +307,16 @@ const ws=document.getElementById('ws'),wx=ws.getContext('2d');let WW=0,WH=0,WD=1
 new ResizeObserver(()=>{WD=devicePixelRatio||1;WW=ws.clientWidth;WH=ws.clientHeight;ws.width=WW*WD;ws.height=WH*WD}).observe(ws);
 const STARS=Array.from({length:140},()=>[Math.random()*2-1,Math.random(),Math.random()*1.3+.3,Math.random()*TAU]);
 // 3-D cloud field: x lateral, y height relative to the eye, z distance ahead. Clouds fly toward the viewer.
+// periodic ridge profiles (0..1) over 360° of azimuth
+function ridge(seed,ks){const ph=ks.map((k,i)=>Math.sin(seed*(i+1)*12.9898)*43758.5453%TAU);
+  return az=>{const a=az*Math.PI/180;let h=0,w=0;ks.forEach((k,i)=>{const amp=1/(i+1)**1.15;h+=amp*(1-Math.abs(Math.sin(k*a/2+ph[i])));w+=amp});
+    return Math.max(0,(h/w-.22)/.78)**1.25}}
+const MT_FAR=ridge(3.1,[5,9,17,31,57]),MT_NEAR=ridge(7.7,[3,7,13,27,49]);
 const ZFAR=60,EYE=2.5;
+const canyonX=z=>3.2*Math.sin(z/21)+1.1*Math.sin(z/8.3);
+const canyonSlope=z=>3.2/21*Math.cos(z/21)+1.1/8.3*Math.cos(z/8.3);
+const TPAL=[[95,125,58],[111,138,68],[122,143,78],[140,138,82],[160,142,92],[79,110,52],[147,163,90],[104,122,60],[170,160,110]];
+function thash(i,j){let h=Math.imul(i,374761393)^Math.imul(j,668265263);h=Math.imul(h^(h>>>13),1274126177);return (h^(h>>>16))>>>0}
 function spawnCloud(init){const above=Math.random()<.55;
   return {x:(Math.random()-.5)*95,y:above?1.6+Math.random()*7:-(1+Math.random()*1.3),z:init?3+Math.random()*(ZFAR-3):ZFAR-Math.random()*6,
     s:1.2+Math.random()*1.9,n:3+Math.floor(Math.random()*3),w:Math.random()*.5}}
@@ -323,17 +334,24 @@ function drawSky(now,dt){
   // weaving turns, both directions, with a small lean from leadership; spirals harder in a dive
   let wv=13*Math.sin(t/16+FL.ph[0])+7*Math.sin(t/6.3+FL.ph[1])+4*Math.sin(t/37+FL.ph[2]);
   if(RM)wv=0;
-  const tb=Math.max(-38,Math.min(38,wv*(dive?1.5:1)+FL.b*3+(FL.tp<=-3?14*Math.sin(t/4):0)));
+  const canyonOn=(FL.rough||0)>=1.5&&FL.tp>-3;
+  FL.cy=(FL.cy||0)+((canyonOn?1:0)-(FL.cy||0))*Math.min(1,dt*.6);
+  const cyBank=Math.max(-40,Math.min(40,canyonSlope((FL.trav||0)+9)*-140));
+  const tb=Math.max(-40,Math.min(40,(wv*(dive?1.5:1)+FL.b*3+(FL.tp<=-3?14*Math.sin(t/4):0))*(1-FL.cy)+cyBank*FL.cy));
   FL.bank+=(tb-FL.bank)*Math.min(1,dt*1.5);
   FL.hdg=(FL.hdg+FL.bank*dt*.7+360)%360;
-  const pitchPx=ppx(Math.max(-5,Math.min(5,FL.p)),H),bank=FL.bank*Math.PI/180;
+  const pitchPx=ppx(Math.max(-5,Math.min(5,FL.p))*(1-.75*FL.cy),H),bank=FL.bank*Math.PI/180;
   // forward motion: faster on big moves, fastest in a dive
-  const spd=RM?0:7+Math.abs(FL.p)*2.2+(FL.p<0?-FL.p*3:0);
+  const spd=RM?0:(7+Math.abs(FL.p)*2.2+(FL.p<0?-FL.p*3:0))*(1+1.6*FL.cy);
   const dh=FL.bank*dt*.7*Math.PI/180;FL.trav=(FL.trav||0)+spd*dt;
+  // altitude: above the cloud deck on calm/green days, breaking out over the ground in a mayday, skimming it in a crash
+  if(FL.alt==null)FL.alt=FL.tp<=-.15?.3:1;
+  FL.alt+=((FL.tp<=-3?0:FL.cy>.5?.1:FL.tp<=-.15?.3:1)-FL.alt)*Math.min(1,dt*.4);
+  FL.gx=(FL.gx||0)-dh*22;
   CL.forEach(o=>{o.z-=spd*dt;o.x-=dh*o.z;if(o.z<1.2||Math.abs(o.x)>o.z*2+12)Object.assign(o,spawnCloud(false))});
   GL.forEach(o=>{o.z-=spd*dt;o.x-=dh*o.z;if(o.z<1.5){o.z+=ZFAR-2;o.x=(Math.random()-.5)*90}
     if(Math.abs(o.x)>o.z*2+15)o.x=-Math.sign(o.x)*(o.z*2+10)});
-  const shake=RM?0:FL.tp<=-1.5?Math.min(6,(-FL.tp-1)*1.4):0;
+  const shake=RM?0:Math.max(FL.tp<=-1.5?Math.min(6,(-FL.tp-1)*1.4):0,FL.cy*2.2);
   c.setTransform(WD,0,0,WD,0,0);c.clearRect(0,0,W,H);
   c.fillStyle='#07090c';c.fillRect(0,0,W,H);
   const P=panes(W,H);
@@ -361,6 +379,21 @@ function drawSky(now,dt){
     g.addColorStop(0,'rgba(255,248,220,1)');g.addColorStop(.08,'rgba(255,240,200,.9)');g.addColorStop(.3,'rgba(255,230,180,.25)');g.addColorStop(1,'rgba(255,230,180,0)');
     c.fillStyle=g;c.fillRect(sx-H*.5,sy-H*.5,H,H);
   }
+  // mountain ranges on the horizon, turning with the heading; snow caps, bases sunk in the cloud sea
+  const FOV=90;
+  [[MT_FAR,.2,night?'#121b2d':'#93a9c6',night?'rgba(150,170,205,.35)':'rgba(246,249,253,.95)',.36],
+   [MT_NEAR,.32,night?'#080d17':'#6a7d96',night?'rgba(140,160,195,.3)':'rgba(240,245,251,.98)',.42]].forEach(([fn,amp,col,snow,line])=>{
+    c.beginPath();c.moveTo(-R,H*.02);
+    for(let x=-W*.75;x<=W*.75;x+=3){const az=FL.hdg+x/W*FOV;c.lineTo(x,-fn(az)*amp*H)}
+    c.lineTo(R,H*.02);c.closePath();
+    c.save();c.fillStyle=col;c.fill();c.clip();
+    let sg=c.createLinearGradient(0,-amp*H,0,-line*amp*H);sg.addColorStop(0,snow);sg.addColorStop(.85,snow);sg.addColorStop(1,'rgba(255,255,255,0)');
+    c.fillStyle=sg;c.fillRect(-R,-amp*H*1.1,2*R,amp*H*(1.1-line));
+    let sh=c.createLinearGradient(-W*.5,0,W*.5,0);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,night?'rgba(0,0,0,.25)':'rgba(30,45,70,.18)');
+    c.fillStyle=sh;c.fillRect(-R,-amp*H*1.2,2*R,amp*H*1.3);c.restore()});
+  let mist=c.createLinearGradient(0,-H*.02,0,H*.03);
+  mist.addColorStop(0,night?'rgba(14,26,44,0)':'rgba(238,244,250,0)');mist.addColorStop(.6,night?'rgba(14,26,44,.85)':'rgba(238,244,250,.9)');mist.addColorStop(1,night?'rgba(14,26,44,1)':'rgba(238,244,250,1)');
+  c.fillStyle=mist;c.fillRect(-R,-H*.02,2*R,H*.05);
   const f=W*.55;
   // surface below: bands rushing toward you by day, ground lights by night
   if(night){
@@ -372,17 +405,66 @@ function drawSky(now,dt){
     for(let k=0;k<16;k++){const z=((k*4-FL.trav)%64+64)%64+1.5,y=EYE/z*f;
       c.strokeStyle='rgba(70,95,130,'+(Math.min(.22,1.2/z)*Math.min(1,(64-z)/12))+')';c.beginPath();c.moveTo(-R,y);c.lineTo(R,y);c.stroke()}
   }
+  // ground terrain shows through as the plane descends below the clouds
+  if(FL.alt<.98){
+    const ga=Math.min(1,(1-FL.alt)*1.15),eyeT=1.3+FL.alt*1.4,D=1.6,TW=2.4;
+    c.save();c.globalAlpha=ga;
+    let tg=c.createLinearGradient(0,0,0,H*.9);
+    if(night){tg.addColorStop(0,'#0c1422');tg.addColorStop(.1,'#070b10');tg.addColorStop(1,'#050806')}
+    else{tg.addColorStop(0,'#b9c8d6');tg.addColorStop(.06,'#8b9c6c');tg.addColorStop(1,'#46612d')}
+    c.fillStyle=tg;c.fillRect(-R,0,2*R,R);
+    if(!night){
+      const off=((FL.trav%D)+D)%D,base=Math.floor(FL.trav/D),HZ=[185,200,214];
+      for(let k=Math.ceil(ZFAR/D);k>=0;k--){const z0=k*D-off+1.4,z1=z0+D;if(z0<1.4)continue;
+        const y0=eyeT/z1*f,y1=eyeT/z0*f,row=base+k,fog=Math.min(1,Math.pow(z0/(ZFAR*.95),.8));
+        const span=z1*1.9,i0=Math.floor((-span-FL.gx)/TW),i1=Math.ceil((span-FL.gx)/TW);
+        for(let i=i0;i<=i1;i++){const xa=i*TW+FL.gx,xb=xa+TW,pc=TPAL[thash(i,row)%TPAL.length];
+          c.fillStyle=`rgb(${pc.map((v,j)=>Math.round(v+(HZ[j]-v)*fog)).join(',')})`;
+          c.beginPath();c.moveTo(xa/z1*f,y0);c.lineTo(xb/z1*f,y0);c.lineTo(xb/z0*f,y1+.5);c.lineTo(xa/z0*f,y1+.5);c.closePath();c.fill();
+          if(z0<24){c.strokeStyle=`rgba(38,52,24,${.35*(1-z0/24)})`;c.lineWidth=Math.max(.6,2.4/z0);c.stroke()}}}
+      // a winding river and a road running out toward the horizon
+      [[z=>9*Math.sin(z/23)+3*Math.sin(z/7.3),1.6,'72,120,160'],[z=>-8+3*Math.sin(z/41),.7,'95,94,88']].forEach(([fx,wd,col])=>{
+        const L=[],Rr=[];for(let z=1.2;z<=ZFAR;z+=.8){const x=fx(z+FL.trav)+FL.gx,y=eyeT/z*f;L.push([(x-wd/2)/z*f,y]);Rr.push([(x+wd/2)/z*f,y])}
+        const gr=c.createLinearGradient(0,eyeT/ZFAR*f,0,eyeT/1.2*f);gr.addColorStop(0,`rgba(${col},.15)`);gr.addColorStop(.15,`rgba(${col},.8)`);gr.addColorStop(1,`rgba(${col},1)`);
+        c.fillStyle=gr;c.beginPath();L.forEach((pt,j)=>j?c.lineTo(...pt):c.moveTo(...pt));Rr.reverse().forEach(pt=>c.lineTo(...pt));c.closePath();c.fill()});
+    }
+    c.restore();
+  }
   c.strokeStyle=night?'rgba(120,160,220,.35)':'rgba(255,255,255,.7)';c.lineWidth=1;c.beginPath();c.moveTo(-R,0);c.lineTo(R,0);c.stroke();
   // clouds, far to near, growing and sliding outward as they approach
   CL.slice().sort((a,b)=>b.z-a.z).forEach(o=>{
     const r=o.s/o.z*f,sx=o.x/o.z*f,sy=-o.y/o.z*f;
-    const a=Math.min(1,(ZFAR-o.z)/14)*Math.min(1,(o.z-1.2)/5);if(a<=0||r<1)return;
+    const a=Math.min(1,(ZFAR-o.z)/14)*Math.min(1,(o.z-1.2)/5)*(o.y<0?FL.alt:1);if(a<=0||r<1)return;
     const m=(o.n-1)/2;
     for(let j=0;j<o.n;j++){const d=j-m,ex=sx+d*r*(.55+o.w*.2),ey=sy+Math.abs(d)*r*.12,rx=r*(.95-Math.abs(d)*.14),ry=r*(.42+o.w*.1);
       c.globalAlpha=a*(night?.28:.55);c.fillStyle=night?'#1c2538':'#b9c6d6';c.beginPath();c.ellipse(ex,ey+r*.08,rx,ry,0,0,TAU);c.fill();
       c.globalAlpha=a*(night?.32:.85);c.fillStyle=night?'#384562':'#ffffff';c.beginPath();c.ellipse(ex,ey-r*.04,rx*.94,ry*.9,0,0,TAU);c.fill()}
   });
   c.globalAlpha=1;
+  // canyon run: rock walls close in on both sides and the floor races underneath
+  if(FL.cy>.02){
+    const ca=Math.min(1,FL.cy*1.3),ZC=46,EYEC=1.2,TOP=16,tr=FL.trav||0,dz=.7;
+    const cxw=z=>canyonX(z+tr)-canyonX(tr+1.5),hw=z=>4.6+1.1*Math.sin((z+tr)/9.5);
+    const dim=night?.22:1,HZ=night?[20,24,34]:[214,182,160];
+    const tint=(col,z,sh)=>{const fg=Math.min(1,Math.pow(z/ZC,.75));return `rgb(${col.map((v,j)=>Math.round((v*sh*dim)+(HZ[j]-v*sh*dim)*fg)).join(',')})`};
+    c.save();c.globalAlpha=ca;
+    let fg=c.createLinearGradient(0,0,0,H*.8);fg.addColorStop(0,night?'#151821':'#cfa98a');fg.addColorStop(1,night?'#0b0c10':'#8a5a3a');
+    c.fillStyle=fg;c.fillRect(-R,0,2*R,R);
+    const L=[],Rr=[];for(let z=1.3;z<=ZC;z+=.8){const x=cxw(z),y=EYEC/z*f;L.push([(x-.6)/z*f,y]);Rr.push([(x+.6)/z*f,y])}
+    c.fillStyle=night?'#1b2a40':'#4f86ad';c.beginPath();L.forEach((q,j)=>j?c.lineTo(...q):c.moveTo(...q));Rr.reverse().forEach(q=>c.lineTo(...q));c.closePath();c.fill();
+    [-1,1].forEach(sd=>{
+      const zf=ZC,xf=(cxw(zf)+sd*hw(zf))/zf*f;
+      c.fillStyle=tint([150,70,42],zf,sd<0?1:.78);c.beginPath();c.moveTo(xf,-TOP/zf*f);c.lineTo(sd*R,-R);c.lineTo(sd*R,R);c.lineTo(xf,EYEC/zf*f);c.closePath();c.fill();
+      for(let z=ZC;z>1.3;z-=dz){const z2=z-dz,x1=(cxw(z)+sd*hw(z))/z*f,x2=(cxw(z2)+sd*hw(z2))/z2*f;
+        const band=Math.floor((z+tr)/1.6)%2,base=band?[170,84,50]:[152,72,44],sh=sd<0?1:.76;
+        c.fillStyle=tint(base,z,sh);c.beginPath();
+        c.moveTo(x1,-TOP/z*f);c.lineTo(x2,-TOP/z2*f);c.lineTo(sd*R,-TOP/z2*f);c.lineTo(sd*R,EYEC/z2*f);c.lineTo(x2,EYEC/z2*f);c.lineTo(x1,EYEC/z*f);c.closePath();c.fill()}
+      c.lineWidth=1.2;
+      [-.6,.9,2.6,4.6,7.2,10.5].forEach((h,k)=>{c.strokeStyle=night?'rgba(0,0,0,.35)':`rgba(${k%2?'110,48,28':'205,140,100'},.45)`;c.beginPath();
+        for(let z=ZC;z>1.3;z-=1.2){const x=(cxw(z)+sd*hw(z))/z*f,y=-h/z*f;z===ZC?c.moveTo(x,y):c.lineTo(x,y)}c.stroke()});
+    });
+    c.restore();
+  }
   c.restore();
   // HUD pitch ladder (rotates with bank, scrolls with pitch)
   c.save();c.translate(cx,cy);c.rotate(-bank);
@@ -412,7 +494,7 @@ function drawSky(now,dt){
   c.font=`600 ${fs}px Oxanium, sans-serif`;c.textAlign='right';c.fillText('LEAD '+sg(FL.b),W*.86,H*.14);
   c.font=`500 ${fs*.72}px "IBM Plex Sans Condensed", sans-serif`;c.fillText('NASDAQ − DOW',W*.86,H*.14+fs*1.15);
   c.restore();
-  if(FL.tp<=-.15){c.fillStyle='rgba(255,40,80,'+(Math.floor(now/450)%2===0?.14:.05)+')';c.fillRect(0,0,W,H)}
+  if(FL.tp<=-.15&&FL.cy<.5){c.fillStyle='rgba(255,40,80,'+(Math.floor(now/450)%2===0?.14:.05)+')';c.fillRect(0,0,W,H)}
   // glass glare + vignette
   g=c.createLinearGradient(0,0,W,H);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(.42,'rgba(255,255,255,0)');
   g.addColorStop(.47,'rgba(255,255,255,.06)');g.addColorStop(.52,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,W,H);
@@ -437,11 +519,13 @@ function drawSky(now,dt){
   // flight status
   const blink=Math.floor(now/450)%2===0;
   let msg,col,sub=null;
-  if(FL.tp>=.15){msg='ALL CLEAR · CLIMBING';col=HUD}
+  const MAY='#ff3d6e';
+  if(FL.cy>.5&&FL.tp>-3){msg='ROUGH AIR · CANYON RUN';col='#ffb547'}
+  else if(FL.tp>=.15){msg='ALL CLEAR · CLIMBING';col=HUD}
   else if(FL.tp>-.15){msg='LEVEL FLIGHT';col=HUD}
-  else{msg='MAYDAY MAYDAY · WE ARE GOING DOWN';col='#ff3d6e';if(FL.tp<=-3)sub='PULL UP · PULL UP'}
-  const vcol=col===HUD||blink?col:'#3a1018';if(vcol!==FL.vc){FL.vc=vcol;helmetLed.setAttribute('fill',vcol)}
-  if(col===HUD||blink){c.save();c.textAlign='center';c.textBaseline='middle';
+  else{msg='MAYDAY MAYDAY · WE ARE GOING DOWN';col=MAY;if(FL.tp<=-3)sub='PULL UP · PULL UP'}
+  const vcol=col!==MAY||blink?col:'#3a1018';if(vcol!==FL.vc){FL.vc=vcol;helmetLed.setAttribute('fill',vcol)}
+  if(col!==MAY||blink){c.save();c.textAlign='center';c.textBaseline='middle';
     const mf=Math.max(12,Math.min(W*.032,H*.085));c.font=`700 ${mf}px Oxanium, sans-serif`;
     const mw=c.measureText(msg).width+mf*1.4,my=H*.84;
     c.fillStyle='rgba(4,8,12,.55)';c.fillRect(cx-mw/2,my-mf*.85,mw,mf*1.7);
@@ -533,9 +617,10 @@ simBtn.onclick=()=>{
 const scn={
   rally:()=>G.forEach(g=>{g.anchor=2.2*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
   selloff:()=>G.forEach(g=>{g.anchor=-1.9*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
+  choppy:()=>{[[-.7,1.3,-1.6],[.3,1.5,-1.2],[1.4,2.3,-.9]].forEach(([v,hi,lo],i)=>{const g=G[i];g.anchor=v;setT(g,v,hi,lo)})},
   crash:()=>{G.forEach(g=>setT(g,-4.7*g.beta/1.1));setTimeout(()=>{if(mode==='sim')G.forEach(g=>{g.anchor=-3.4*g.beta/1.1;setT(g,g.anchor)})},2200)}
 };
-document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{enterSim();scn[b.dataset.scn]()});
+document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{enterSim();G.forEach(g=>{g.hi=0;g.lo=0});scn[b.dataset.scn]()});
 liveBtn.onclick=()=>{stopSim();mode='live';liveBtn.setAttribute('aria-pressed','true');
   if(data)applyData();else feed('err','No data yet · showing snapshot');load()};
 
