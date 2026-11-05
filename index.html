@@ -18,13 +18,34 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;
-  background-image:radial-gradient(ellipse at 50% -10%,#16202e 0%,transparent 60%),
-  linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
-  background-size:auto,32px 32px,32px 32px;background-position:0 0,-1px -1px,-1px -1px;background-attachment:fixed}
+  background-image:radial-gradient(ellipse at 50% 0%,#1b232d 0%,transparent 65%),
+  radial-gradient(ellipse at 50% 120%,#000 0%,transparent 60%);background-attachment:fixed}
 .wrap{max-width:1180px;margin:0 auto;padding-block:28px 40px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
-  display:flex;flex-direction:column;gap:18px}
-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+  display:flex;flex-direction:column;gap:0}
+.windshield{position:relative;height:clamp(160px,24vw,285px);background:#080a0d;border-radius:28px 28px 0 0;overflow:hidden}
+.windshield canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glare{position:relative;z-index:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:-12px;padding:14px 22px 10px;border-radius:16px 16px 0 0;
+  background:linear-gradient(180deg,#22282f 0%,#14181d 55%,#0e1115 100%);
+  box-shadow:0 -6px 18px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 #000}
+.glare::after{content:"";position:absolute;left:14px;right:14px;top:7px;border-top:1px dashed rgba(255,255,255,.09)}
+.panel{position:relative;display:flex;flex-direction:column;gap:16px;padding:22px 18px 20px;
+  background:linear-gradient(180deg,#1a1f26 0%,#151a20 60%,#111519 100%);
+  border:1px solid #05070a;border-top:none;border-radius:0 0 18px 18px;
+  box-shadow:inset 0 10px 18px rgba(0,0,0,.55),inset 0 -40px 60px rgba(0,0,0,.3),0 20px 40px rgba(0,0,0,.6)}
+.panel::before,.panel::after{content:"";position:absolute;left:12px;right:12px;height:6px;
+  background:radial-gradient(circle,#46505d 0 1.6px,#0b0e12 2.2px,transparent 2.6px) 0 0/34px 6px repeat-x;opacity:.8}
+.panel::before{top:8px}.panel::after{bottom:8px}
+.plate{font-family:var(--f-display);font-size:10px;letter-spacing:.22em;color:#8d97a6;text-transform:uppercase;
+  background:#0a0d11;border:1px solid #232a33;border-radius:3px;padding:3px 8px;align-self:flex-start}
+.gl-label{font-family:var(--f-display);font-size:11px;letter-spacing:.24em;color:#8d97a6;text-transform:uppercase}
+.glare .clock{font-size:18px}
+.nameplate{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;padding:14px 18px;
+  background:linear-gradient(180deg,#0d1116,#090c10);border:1px solid #232a33;border-radius:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.nameplate h1{font-size:clamp(22px,3.2vw,32px)}
+.stack{display:flex;flex-direction:column;gap:8px;min-width:0}
+.note{margin-top:14px}
 h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,4vw,38px);letter-spacing:.04em;margin:0;line-height:1}
 h1 span{color:var(--amber)}
 .sub{color:var(--muted);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin-top:6px}
@@ -66,14 +87,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div>
-      <h1>QTI'S MARKET <span>PULSE</span></h1>
-      <div class="sub">Daily change · ±5% full scale · rim markers show session high/low</div>
-    </div>
-    <div class="clock" id="clock">--:--:--</div>
-  </header>
+  <div class="windshield"><canvas id="ws" role="img" aria-label="Cockpit windshield: horizon pitches with the average move and banks with Nasdaq versus Dow leadership"></canvas></div>
+  <div class="glare"><span class="gl-label">Flight deck · QTI-1</span><div class="clock" id="clock">--:--:--</div></div>
 
+  <div class="panel">
+  <span class="plate">Master caution · session read</span>
   <section class="annun" aria-label="Session read">
     <div class="lamp"><div class="k">Feed</div><div class="v" id="feed"><span class="dot" id="dot"></span><span id="feedTxt">Loading…</span></div></div>
     <div class="lamp"><div class="k">Tape</div><div class="v" id="tape">—</div></div>
@@ -81,6 +99,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
     <div class="lamp"><div class="k">Leadership · Nasdaq − Dow</div><div class="v" id="lead">—</div><div class="bar"><i id="leadBar"></i></div></div>
   </section>
 
+  <span class="plate">Primary flight display · index change</span>
   <section class="cluster" id="cluster" aria-label="Index gauges"></section>
 
   <div class="rail">
@@ -90,6 +109,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
     <button data-scn="rally">Rally</button>
     <button data-scn="selloff">Selloff</button>
     <button data-scn="crash">Flash crash</button>
+  </div>
+  <header class="nameplate">
+    <div>
+      <h1>QTI'S MARKET <span>PULSE</span></h1>
+      <div class="sub">Daily change · ±5% full scale · rim markers show session high/low</div>
+    </div>
+  </header>
   </div>
   <p class="note" id="srcNote">Quotes from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff and Flash crash switch to simulation; press Live data to go back.</p>
 </div>
@@ -131,6 +157,7 @@ function setT(g,v,hi,lo){
 
 function readout(){
   const vs=G.map(g=>g.target),avg=vs.reduce((a,b)=>a+b,0)/vs.length,lead=G[2].target-G[0].target,up=vs.filter(v=>v>0).length;
+  FL.tp=avg;FL.tb=lead;
   let t,c;
   if(avg>=3){t='Melt-up';c=C.up}else if(avg>=1){t='Broad rally';c=C.up}else if(avg>0){t=up===3?'Green tape':'Mixed, leaning green';c=C.up}
   else if(avg>-1){t=up===0?'Soft tape':'Mixed, leaning red';c=C.down}else if(avg>-3){t='Risk-off';c=C.down}else{t='Capitulation';c=C.down}
@@ -206,7 +233,162 @@ function loop(now){
       if(g.pos>5.2){g.pos=5.2;g.vel=-Math.abs(g.vel)*.4}if(g.pos<-5.2){g.pos=-5.2;g.vel=Math.abs(g.vel)*.4}
       if(jitter)g.pos+=(Math.random()-.5)*.012}
     draw(g)});
+  drawSky(now,dt);
   requestAnimationFrame(loop);
+}
+
+
+/* ---------- Windshield: pitch = average move, bank = Nasdaq − Dow ---------- */
+var FL={tp:0,tb:0,p:0,b:0,cloud:0,hdg:90,bank:0,ph:[Math.random()*TAU,Math.random()*TAU,Math.random()*TAU]};
+const ppx=(v,H)=>(v>=0?v*.08:v*.15)*H;  // nose-down is steeper than nose-up
+const wrap1=v=>((v%1)+1)%1;
+const ws=document.getElementById('ws'),wx=ws.getContext('2d');let WW=0,WH=0,WD=1;
+new ResizeObserver(()=>{WD=devicePixelRatio||1;WW=ws.clientWidth;WH=ws.clientHeight;ws.width=WW*WD;ws.height=WH*WD}).observe(ws);
+const STARS=Array.from({length:140},()=>[Math.random()*2-1,Math.random(),Math.random()*1.3+.3,Math.random()*TAU]);
+// 3-D cloud field: x lateral, y height relative to the eye, z distance ahead. Clouds fly toward the viewer.
+const ZFAR=60,EYE=2.5;
+function spawnCloud(init){const above=Math.random()<.55;
+  return {x:(Math.random()-.5)*95,y:above?1.6+Math.random()*7:-(1+Math.random()*1.3),z:init?3+Math.random()*(ZFAR-3):ZFAR-Math.random()*6,
+    s:1.2+Math.random()*1.9,n:3+Math.floor(Math.random()*3),w:Math.random()*.5}}
+const CL=Array.from({length:26},()=>spawnCloud(true));
+const GL=Array.from({length:160},()=>({x:(Math.random()-.5)*90,z:2+Math.random()*(ZFAR-2),b:Math.random()}));
+const HUD='#7dffb0';
+function panes(W,H){const c=W/2,post=Math.max(10,W*.018),top=H*.06;
+  return [[[W*.035,H],[W*.11,top+H*.04],[c-post/2,top],[c-post/2,H]],
+          [[c+post/2,H],[c+post/2,top],[W*.89,top+H*.04],[W*.965,H]]]}
+function drawSky(now,dt){
+  if(!WW)return;const W=WW,H=WH,c=wx;
+  const k=RM?1:Math.min(1,dt*2.2);FL.p+=(FL.tp-FL.p)*k;FL.b+=(FL.tb-FL.b)*k;
+  const night=typeof mode!=='undefined'&&mode==='live'&&data&&data.marketOpen===false;
+  const t=now/1000,dive=FL.tp<=-.15;
+  // weaving turns, both directions, with a small lean from leadership; spirals harder in a dive
+  let wv=13*Math.sin(t/16+FL.ph[0])+7*Math.sin(t/6.3+FL.ph[1])+4*Math.sin(t/37+FL.ph[2]);
+  if(RM)wv=0;
+  const tb=Math.max(-38,Math.min(38,wv*(dive?1.5:1)+FL.b*3+(FL.tp<=-3?14*Math.sin(t/4):0)));
+  FL.bank+=(tb-FL.bank)*Math.min(1,dt*1.5);
+  FL.hdg=(FL.hdg+FL.bank*dt*.7+360)%360;
+  const pitchPx=ppx(Math.max(-5,Math.min(5,FL.p)),H),bank=FL.bank*Math.PI/180;
+  // forward motion: faster on big moves, fastest in a dive
+  const spd=RM?0:7+Math.abs(FL.p)*2.2+(FL.p<0?-FL.p*3:0);
+  const dh=FL.bank*dt*.7*Math.PI/180;FL.trav=(FL.trav||0)+spd*dt;
+  CL.forEach(o=>{o.z-=spd*dt;o.x-=dh*o.z;if(o.z<1.2||Math.abs(o.x)>o.z*2+12)Object.assign(o,spawnCloud(false))});
+  GL.forEach(o=>{o.z-=spd*dt;o.x-=dh*o.z;if(o.z<1.5){o.z+=ZFAR-2;o.x=(Math.random()-.5)*90}
+    if(Math.abs(o.x)>o.z*2+15)o.x=-Math.sign(o.x)*(o.z*2+10)});
+  const shake=RM?0:FL.tp<=-1.5?Math.min(6,(-FL.tp-1)*1.4):0;
+  c.setTransform(WD,0,0,WD,0,0);c.clearRect(0,0,W,H);
+  c.fillStyle='#07090c';c.fillRect(0,0,W,H);
+  const P=panes(W,H);
+  c.save();if(shake)c.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  c.beginPath();P.forEach(q=>{c.moveTo(...q[0]);q.slice(1).forEach(pt=>c.lineTo(...pt));c.closePath()});c.clip();
+  const cx=W/2,cy=H*.58,R=Math.hypot(W,H);
+  c.save();c.translate(cx,cy);c.rotate(-bank);c.translate(0,pitchPx);
+  let g=c.createLinearGradient(0,-H*1.2,0,0);
+  if(night){g.addColorStop(0,'#01030a');g.addColorStop(.7,'#071530');g.addColorStop(1,'#1b2f55')}
+  else{g.addColorStop(0,'#1d5ea8');g.addColorStop(.65,'#5d9fd8');g.addColorStop(1,'#cfe6f7')}
+  c.fillStyle=g;c.fillRect(-R,-R,2*R,R);
+  g=c.createLinearGradient(0,0,0,H*1.6);
+  if(night){g.addColorStop(0,'#0e1a2c');g.addColorStop(.15,'#060a12');g.addColorStop(1,'#020306')}
+  else{g.addColorStop(0,'#eef4fa');g.addColorStop(.1,'#c3d3e2');g.addColorStop(.42,'#6f86a0');g.addColorStop(1,'#26364b')}
+  c.fillStyle=g;c.fillRect(-R,0,2*R,R);
+  if(night){
+    const hx=FL.hdg/120;
+    STARS.forEach(([x,y,s,ph])=>{c.globalAlpha=.4+.6*Math.abs(Math.sin(now/900+ph));c.fillStyle='#e8f0ff';
+      c.fillRect((wrap1(x*.5+.5-hx)-.5)*W*1.8,-y*H*1.1,s,s)});
+    c.globalAlpha=1;
+    const mrel=((240-FL.hdg+540)%360)-180;
+    c.beginPath();c.arc(mrel/45*W*.5,-H*.62,H*.06,0,TAU);c.fillStyle='#f3f1e6';c.shadowColor='#f3f1e6';c.shadowBlur=30;c.fill();c.shadowBlur=0;
+  }else{
+    const srel=((150-FL.hdg+540)%360)-180,sx=srel/45*W*.5,sy=-H*.6;g=c.createRadialGradient(sx,sy,0,sx,sy,H*.5);
+    g.addColorStop(0,'rgba(255,248,220,1)');g.addColorStop(.08,'rgba(255,240,200,.9)');g.addColorStop(.3,'rgba(255,230,180,.25)');g.addColorStop(1,'rgba(255,230,180,0)');
+    c.fillStyle=g;c.fillRect(sx-H*.5,sy-H*.5,H,H);
+  }
+  const f=W*.55;
+  // surface below: bands rushing toward you by day, ground lights by night
+  if(night){
+    GL.forEach(o=>{const sx=o.x/o.z*f,sy=EYE/o.z*f,sz=Math.min(3.2,1+6/o.z);
+      c.globalAlpha=Math.min(1,(ZFAR-o.z)/10)*(.35+.65*o.b);c.fillStyle=o.b>.85?'#ffe2a8':'#ffb547';c.fillRect(sx,sy,sz,sz)});
+    c.globalAlpha=1;
+  }else{
+    c.lineWidth=1;
+    for(let k=0;k<16;k++){const z=((k*4-FL.trav)%64+64)%64+1.5,y=EYE/z*f;
+      c.strokeStyle='rgba(70,95,130,'+(Math.min(.22,1.2/z)*Math.min(1,(64-z)/12))+')';c.beginPath();c.moveTo(-R,y);c.lineTo(R,y);c.stroke()}
+  }
+  c.strokeStyle=night?'rgba(120,160,220,.35)':'rgba(255,255,255,.7)';c.lineWidth=1;c.beginPath();c.moveTo(-R,0);c.lineTo(R,0);c.stroke();
+  // clouds, far to near, growing and sliding outward as they approach
+  CL.slice().sort((a,b)=>b.z-a.z).forEach(o=>{
+    const r=o.s/o.z*f,sx=o.x/o.z*f,sy=-o.y/o.z*f;
+    const a=Math.min(1,(ZFAR-o.z)/14)*Math.min(1,(o.z-1.2)/5);if(a<=0||r<1)return;
+    const m=(o.n-1)/2;
+    for(let j=0;j<o.n;j++){const d=j-m,ex=sx+d*r*(.55+o.w*.2),ey=sy+Math.abs(d)*r*.12,rx=r*(.95-Math.abs(d)*.14),ry=r*(.42+o.w*.1);
+      c.globalAlpha=a*(night?.28:.55);c.fillStyle=night?'#1c2538':'#b9c6d6';c.beginPath();c.ellipse(ex,ey+r*.08,rx,ry,0,0,TAU);c.fill();
+      c.globalAlpha=a*(night?.32:.85);c.fillStyle=night?'#384562':'#ffffff';c.beginPath();c.ellipse(ex,ey-r*.04,rx*.94,ry*.9,0,0,TAU);c.fill()}
+  });
+  c.globalAlpha=1;
+  c.restore();
+  // HUD pitch ladder (rotates with bank, scrolls with pitch)
+  c.save();c.translate(cx,cy);c.rotate(-bank);
+  c.strokeStyle=HUD;c.fillStyle=HUD;c.shadowColor=HUD;c.shadowBlur=6;c.lineWidth=1.4;c.globalAlpha=.85;
+  c.font=`600 ${Math.max(10,H*.045)}px Oxanium, sans-serif`;c.textBaseline='middle';
+  for(let d=-5;d<=5;d++){if(!d)continue;const y=pitchPx-ppx(d,H),w=W*.07,gap=W*.035;
+    if(Math.abs(y)>H*.48)continue;
+    c.setLineDash(d<0?[5,4]:[]);c.beginPath();
+    c.moveTo(-gap-w,y);c.lineTo(-gap,y);c.lineTo(-gap,y+(d>0?6:-6));
+    c.moveTo(gap+w,y);c.lineTo(gap,y);c.lineTo(gap,y+(d>0?6:-6));c.stroke();c.setLineDash([]);
+    c.textAlign='right';c.fillText((d>0?'+':'')+d,-gap-w-6,y);c.textAlign='left';c.fillText((d>0?'+':'')+d,gap+w+6,y)}
+  c.restore();
+  // fixed aircraft symbol + bank scale
+  c.save();c.translate(cx,cy);c.strokeStyle=HUD;c.fillStyle=HUD;c.shadowColor=HUD;c.shadowBlur=8;c.lineWidth=2.2;c.globalAlpha=.95;
+  const u=Math.max(14,W*.03);c.beginPath();c.moveTo(-u*2.2,0);c.lineTo(-u*.8,0);c.lineTo(-u*.4,u*.5);c.lineTo(0,0);c.lineTo(u*.4,u*.5);c.lineTo(u*.8,0);c.lineTo(u*2.2,0);c.stroke();
+  c.beginPath();c.arc(0,0,2.5,0,TAU);c.fill();
+  const br=H*.42;c.lineWidth=1.4;c.globalAlpha=.7;
+  [-30,-20,-10,0,10,20,30].forEach(a=>{const r=(a-90)*Math.PI/180,l=a%30?6:11;c.beginPath();c.moveTo(Math.cos(r)*br,Math.sin(r)*br);c.lineTo(Math.cos(r)*(br+l),Math.sin(r)*(br+l));c.stroke()});
+  c.rotate(-bank);c.globalAlpha=.95;c.beginPath();c.moveTo(0,-br+2);c.lineTo(-6,-br+12);c.lineTo(6,-br+12);c.closePath();c.fill();
+  c.restore();
+  // HUD readouts
+  c.save();c.fillStyle=HUD;c.shadowColor=HUD;c.shadowBlur=6;c.globalAlpha=.9;
+  const fs=Math.max(10,H*.05);c.font=`600 ${fs}px Oxanium, sans-serif`;c.textBaseline='top';
+  const sg=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
+  c.textAlign='left';c.fillText('PITCH '+sg(FL.p)+'%',W*.14,H*.14);
+  c.font=`500 ${fs*.72}px "IBM Plex Sans Condensed", sans-serif`;c.fillText('AVG MOVE',W*.14,H*.14+fs*1.15);
+  c.font=`600 ${fs}px Oxanium, sans-serif`;c.textAlign='right';c.fillText('LEAD '+sg(FL.b),W*.86,H*.14);
+  c.font=`500 ${fs*.72}px "IBM Plex Sans Condensed", sans-serif`;c.fillText('NASDAQ − DOW',W*.86,H*.14+fs*1.15);
+  c.restore();
+  if(FL.tp<=-.15){c.fillStyle='rgba(255,40,80,'+(Math.floor(now/450)%2===0?.14:.05)+')';c.fillRect(0,0,W,H)}
+  // glass glare + vignette
+  g=c.createLinearGradient(0,0,W,H);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(.42,'rgba(255,255,255,0)');
+  g.addColorStop(.47,'rgba(255,255,255,.06)');g.addColorStop(.52,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,W,H);
+  g=c.createRadialGradient(cx,H*.55,H*.2,cx,H*.55,W*.6);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.45)');c.fillStyle=g;c.fillRect(0,0,W,H);
+  c.restore();
+  // frame: posts and rim
+  c.lineJoin='round';P.forEach(q=>{c.beginPath();c.moveTo(...q[0]);q.slice(1).forEach(pt=>c.lineTo(...pt));c.closePath();
+    c.strokeStyle='#1d232b';c.lineWidth=7;c.stroke();c.strokeStyle='#3a434f';c.lineWidth=1.2;c.stroke()});
+  [[W*.08,H*.35],[W*.92,H*.35],[W/2,H*.2],[W/2,H*.7]].forEach(([x,y])=>{c.beginPath();c.arc(x,y,3,0,TAU);
+    const rg=c.createRadialGradient(x-1,y-1,0,x,y,3);rg.addColorStop(0,'#6a7584');rg.addColorStop(1,'#1a1f26');c.fillStyle=rg;c.fill()});
+  // HUD symbology drawn over the frame
+  c.save();c.fillStyle=HUD;c.strokeStyle=HUD;c.shadowColor=HUD;c.shadowBlur=6;c.globalAlpha=.9;
+  // heading tape
+  c.font=`600 ${fs*.8}px Oxanium, sans-serif`;c.textAlign='center';c.textBaseline='alphabetic';c.strokeStyle=HUD;c.lineWidth=1.2;
+  const tw=W*.16,ty=H*.17;
+  for(let d=-30;d<=30;d+=5){const hd=Math.round(FL.hdg/5)*5+d,x=cx+(hd-FL.hdg)/30*tw;if(Math.abs(x-cx)>tw)continue;
+    const h=((hd%360)+360)%360;c.beginPath();c.moveTo(x,ty);c.lineTo(x,ty-(h%10?4:8));c.stroke();
+    if(h%30===0)c.fillText(String(h/10).padStart(2,'0'),x,ty-11)}
+  c.beginPath();c.moveTo(cx,ty+2);c.lineTo(cx-5,ty+9);c.lineTo(cx+5,ty+9);c.closePath();c.fill();
+  c.textBaseline='top';c.fillText('HDG '+String(Math.round(FL.hdg)%360).padStart(3,'0'),cx,ty+12);
+  c.restore();
+  // flight status
+  const blink=Math.floor(now/450)%2===0;
+  let msg,col,sub=null;
+  if(FL.tp>=.15){msg='ALL CLEAR · CLIMBING';col=HUD}
+  else if(FL.tp>-.15){msg='LEVEL FLIGHT';col=HUD}
+  else{msg='MAYDAY MAYDAY · WE ARE GOING DOWN';col='#ff3d6e';if(FL.tp<=-3)sub='PULL UP · PULL UP'}
+  if(col===HUD||blink){c.save();c.textAlign='center';c.textBaseline='middle';
+    const mf=Math.max(12,Math.min(W*.032,H*.085));c.font=`700 ${mf}px Oxanium, sans-serif`;
+    const mw=c.measureText(msg).width+mf*1.4,my=H*.84;
+    c.fillStyle='rgba(4,8,12,.55)';c.fillRect(cx-mw/2,my-mf*.85,mw,mf*1.7);
+    c.strokeStyle=col;c.lineWidth=1.5;c.strokeRect(cx-mw/2,my-mf*.85,mw,mf*1.7);
+    c.fillStyle=col;c.shadowColor=col;c.shadowBlur=12;c.fillText(msg,cx,my);c.restore()}
+  if(sub&&!blink){c.save();c.textAlign='center';c.textBaseline='middle';const mf=Math.max(12,Math.min(W*.03,H*.08));
+    c.font=`700 ${mf}px Oxanium, sans-serif`;c.fillStyle='#ffb547';c.shadowColor='#ffb547';c.shadowBlur=12;c.fillText(sub,cx,H*.84);c.restore()}
 }
 
 /* ---------- Live data from data.json (written by the GitHub Action) ---------- */
@@ -257,9 +439,9 @@ simBtn.onclick=()=>{
   simT=setInterval(()=>{const f=randn()*.09;G.forEach(g=>setT(g,g.target+g.beta*f+randn()*.035-.03*(g.target-g.anchor)))},550);
 };
 const scn={
-  rally:()=>G.forEach(g=>{g.anchor=g.target+1.6*g.beta;setT(g,g.anchor)}),
-  selloff:()=>G.forEach(g=>{g.anchor=g.target-1.8*g.beta;setT(g,g.anchor)}),
-  crash:()=>{G.forEach(g=>setT(g,-4.6*g.beta/1.1));setTimeout(()=>{if(mode==='sim')G.forEach(g=>{g.anchor=-1.2*g.beta;setT(g,g.anchor)})},1600)}
+  rally:()=>G.forEach(g=>{g.anchor=2.2*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
+  selloff:()=>G.forEach(g=>{g.anchor=-1.9*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
+  crash:()=>{G.forEach(g=>setT(g,-4.7*g.beta/1.1));setTimeout(()=>{if(mode==='sim')G.forEach(g=>{g.anchor=-3.4*g.beta/1.1;setT(g,g.anchor)})},2200)}
 };
 document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{enterSim();scn[b.dataset.scn]()});
 liveBtn.onclick=()=>{stopSim();mode='live';liveBtn.setAttribute('aria-pressed','true');
