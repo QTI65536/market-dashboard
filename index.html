@@ -44,6 +44,24 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .nameplate{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;padding:14px 18px;
   background:linear-gradient(180deg,#0d1116,#090c10);border:1px solid #232a33;border-radius:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
 .nameplate h1{font-size:clamp(22px,3.2vw,32px)}
+.deck{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,33%) minmax(0,1fr);gap:16px;align-items:start;margin-bottom:-20px}
+.side{position:relative;z-index:4;display:flex;flex-direction:column;gap:10px;min-width:0;padding-bottom:22px}
+.side-r .plate{align-self:flex-end}
+.side-row{display:flex;gap:10px;align-items:stretch}
+.side-r .side-row{flex-direction:row-reverse}
+.side-row .rail{flex-direction:column;align-items:stretch;flex:1;min-width:0;justify-content:center}
+.side-row .rail button{justify-content:center}
+.mini{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.mini canvas{width:clamp(80px,8vw,108px);aspect-ratio:1;display:block}
+.mini span{font-family:var(--f-display);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.pilot-seat{position:relative;z-index:3;display:flex;justify-content:center;align-self:end;margin-top:clamp(-270px,-20vw,-80px);pointer-events:none}
+.pilot-back{width:185%;max-width:none;height:auto;display:block;margin:0 -42.5%;overflow:visible}
+@media (max-width:760px){
+  .deck{grid-template-columns:minmax(0,1fr);margin-bottom:0}
+  .pilot-seat{order:-1;margin-top:-80px}
+  .pilot-back{width:min(110%,420px);margin:0 auto}
+  .side{padding-bottom:0}.side-r .plate{align-self:flex-start}.side-r .side-row{flex-direction:row}
+}
 .stack{display:flex;flex-direction:column;gap:8px;min-width:0}
 .note{margin-top:14px}
 h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,4vw,38px);letter-spacing:.04em;margin:0;line-height:1}
@@ -91,31 +109,66 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
   <div class="glare"><span class="gl-label">Flight deck · QTI-1</span><div class="clock" id="clock">--:--:--</div></div>
 
   <div class="panel">
-  <span class="plate">Master caution · session read</span>
-  <section class="annun" aria-label="Session read">
-    <div class="lamp"><div class="k">Feed</div><div class="v" id="feed"><span class="dot" id="dot"></span><span id="feedTxt">Loading…</span></div></div>
-    <div class="lamp"><div class="k">Tape</div><div class="v" id="tape">—</div></div>
-    <div class="lamp"><div class="k">Average move</div><div class="v" id="avg">—</div><div class="bar"><i id="avgBar"></i></div></div>
-    <div class="lamp"><div class="k">Leadership · Nasdaq − Dow</div><div class="v" id="lead">—</div><div class="bar"><i id="leadBar"></i></div></div>
-  </section>
-
-  <span class="plate">Primary flight display · index change</span>
+  <span class="plate">Primary flight display · daily change · ±5% full scale · rim markers show session high/low</span>
   <section class="cluster" id="cluster" aria-label="Index gauges"></section>
 
-  <div class="rail">
-    <button id="liveBtn" aria-pressed="true"><span class="led"></span>Live data</button>
-    <span class="sep"></span>
-    <button id="simBtn" aria-pressed="false"><span class="led"></span>Sim tape</button>
-    <button data-scn="rally">Rally</button>
-    <button data-scn="selloff">Selloff</button>
-    <button data-scn="crash">Flash crash</button>
-  </div>
-  <header class="nameplate">
-    <div>
-      <h1>QTI'S MARKET <span>PULSE</span></h1>
-      <div class="sub">Daily change · ±5% full scale · rim markers show session high/low</div>
+  <div class="deck">
+    <div class="side side-l">
+      <span class="plate">Master caution</span>
+      <div class="lamp"><div class="k">Feed</div><div class="v" id="feed"><span class="dot" id="dot"></span><span id="feedTxt">Loading…</span></div></div>
+      <div class="lamp"><div class="k">Tape</div><div class="v" id="tape">—</div></div>
+      <div class="side-row">
+      <div class="mini"><canvas id="adi" aria-label="Attitude indicator"></canvas><span>Attitude</span></div>
+      <div class="rail">
+        <button id="liveBtn" aria-pressed="true"><span class="led"></span>Live data</button>
+        <button id="simBtn" aria-pressed="false"><span class="led"></span>Sim tape</button>
+      </div>
+      </div>
     </div>
-  </header>
+    <div class="pilot-seat" aria-label="Captain QTI">
+    <svg class="pilot-back" viewBox="0 0 300 220" role="img" aria-labelledby="pilotT">
+      <title id="pilotT">Back of Captain QTI's flight helmet, with his name across it</title>
+      <defs>
+        <radialGradient id="shellB" cx=".35" cy=".25" r=".85"><stop offset="0" stop-color="#8a9681"/><stop offset=".45" stop-color="#58654f"/><stop offset="1" stop-color="#232b23"/></radialGradient>
+        <linearGradient id="suitB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#46523f"/><stop offset="1" stop-color="#1f261d"/></linearGradient>
+        <path id="nameArcB" d="M84 84 C112 66 188 66 216 84"/>
+      </defs>
+      <g id="torso">
+        <path d="M0 220 C10 190 58 172 100 170 L200 170 C242 172 290 190 300 220 Z" fill="url(#suitB)"/>
+        <path d="M104 172 L94 220 M196 172 L206 220" stroke="#151a16" stroke-width="16"/>
+        <path d="M104 172 L94 220 M196 172 L206 220" stroke="#2b332b" stroke-width="16" stroke-dasharray="1 7"/>
+        <path d="M118 146 L182 146 L188 176 L112 176 Z" fill="#171c18"/>
+        <path d="M226 136 C252 156 248 186 228 206" fill="none" stroke="#2c3238" stroke-width="10" stroke-linecap="round"/>
+        <path d="M226 136 C252 156 248 186 228 206" fill="none" stroke="#4a525b" stroke-width="10" stroke-dasharray="2 4"/>
+      </g>
+      <g id="head">
+        <ellipse cx="72" cy="118" rx="11" ry="22" fill="#3a4538" stroke="#141a15" stroke-width="1.5"/>
+        <ellipse cx="228" cy="118" rx="11" ry="22" fill="#3a4538" stroke="#141a15" stroke-width="1.5"/>
+        <path d="M72 108 C68 48 106 12 150 12 C194 12 232 48 228 108 C228 134 218 152 202 160 L98 160 C82 152 72 134 72 108 Z" fill="url(#shellB)" stroke="#141a15" stroke-width="2"/>
+        <path d="M92 40 C118 22 182 22 208 40" fill="none" stroke="#a9b59f" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+        <circle id="helmetLed" cx="150" cy="24" r="5" fill="#7dffb0" stroke="#a9b59f" stroke-width="1.2"/>
+        <ellipse cx="112" cy="122" rx="26" ry="12" fill="#fff" opacity=".08" transform="rotate(-18 112 122)"/>
+        <path d="M80 74 C110 52 190 52 220 74 L217 94 C190 74 110 74 83 94 Z" fill="#121618" stroke="#ffb547" stroke-width="1.2"/>
+        <text font-family="Oxanium, sans-serif" font-size="12.5" font-weight="700" letter-spacing="1.3" fill="#ffb547"><textPath href="#nameArcB" startOffset="50%" text-anchor="middle">CAPTAIN QTI</textPath></text>
+        <rect x="138" y="140" width="24" height="8" rx="1.5" fill="#d9e0ea" opacity=".55"/>
+        <path d="M98 160 C120 168 180 168 202 160" fill="none" stroke="#0e120f" stroke-width="3"/>
+      </g>
+    </svg>
+    </div>
+    <div class="side side-r">
+      <span class="plate">Session read</span>
+      <div class="lamp"><div class="k">Average move</div><div class="v" id="avg">—</div><div class="bar"><i id="avgBar"></i></div></div>
+      <div class="lamp"><div class="k">Leadership · Nasdaq − Dow</div><div class="v" id="lead">—</div><div class="bar"><i id="leadBar"></i></div></div>
+      <div class="side-row">
+      <div class="mini"><canvas id="hsi" aria-label="Heading indicator"></canvas><span>Heading</span></div>
+      <div class="rail">
+        <button data-scn="rally">Rally</button>
+        <button data-scn="selloff">Selloff</button>
+        <button data-scn="crash">Flash crash</button>
+      </div>
+      </div>
+    </div>
+  </div>
   </div>
   <p class="note" id="srcNote">Quotes from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff and Flash crash switch to simulation; press Live data to go back.</p>
 </div>
@@ -233,12 +286,18 @@ function loop(now){
       if(g.pos>5.2){g.pos=5.2;g.vel=-Math.abs(g.vel)*.4}if(g.pos<-5.2){g.pos=-5.2;g.vel=Math.abs(g.vel)*.4}
       if(jitter)g.pos+=(Math.random()-.5)*.012}
     draw(g)});
-  drawSky(now,dt);
+  drawSky(now,dt);drawMinis();
+  if(!RM){const t=now/1000,sh=FL.tp<=-1.5?Math.min(3,(-FL.tp-1)):0;
+    const by=Math.sin(t*1.7)*2.4+Math.sin(t*4.3)*.6+(Math.random()-.5)*sh,bx=Math.sin(t*.9)*1.2+(Math.random()-.5)*sh;
+    headG.setAttribute('transform',`translate(${bx.toFixed(2)} ${by.toFixed(2)}) rotate(${(FL.bank*.22+Math.sin(t*1.3)*1.2).toFixed(2)} 150 160)`);
+    torsoG.setAttribute('transform',`translate(0 ${(Math.sin(t*1.7-.6)*.8).toFixed(2)})`)}
   requestAnimationFrame(loop);
 }
 
 
 /* ---------- Windshield: pitch = average move, bank = Nasdaq − Dow ---------- */
+const headG=document.getElementById('head'),torsoG=document.getElementById('torso');
+const helmetLed=document.getElementById('helmetLed');
 var FL={tp:0,tb:0,p:0,b:0,cloud:0,hdg:90,bank:0,ph:[Math.random()*TAU,Math.random()*TAU,Math.random()*TAU]};
 const ppx=(v,H)=>(v>=0?v*.08:v*.15)*H;  // nose-down is steeper than nose-up
 const wrap1=v=>((v%1)+1)%1;
@@ -381,6 +440,7 @@ function drawSky(now,dt){
   if(FL.tp>=.15){msg='ALL CLEAR · CLIMBING';col=HUD}
   else if(FL.tp>-.15){msg='LEVEL FLIGHT';col=HUD}
   else{msg='MAYDAY MAYDAY · WE ARE GOING DOWN';col='#ff3d6e';if(FL.tp<=-3)sub='PULL UP · PULL UP'}
+  const vcol=col===HUD||blink?col:'#3a1018';if(vcol!==FL.vc){FL.vc=vcol;helmetLed.setAttribute('fill',vcol)}
   if(col===HUD||blink){c.save();c.textAlign='center';c.textBaseline='middle';
     const mf=Math.max(12,Math.min(W*.032,H*.085));c.font=`700 ${mf}px Oxanium, sans-serif`;
     const mw=c.measureText(msg).width+mf*1.4,my=H*.84;
@@ -389,6 +449,38 @@ function drawSky(now,dt){
     c.fillStyle=col;c.shadowColor=col;c.shadowBlur=12;c.fillText(msg,cx,my);c.restore()}
   if(sub&&!blink){c.save();c.textAlign='center';c.textBaseline='middle';const mf=Math.max(12,Math.min(W*.03,H*.08));
     c.font=`700 ${mf}px Oxanium, sans-serif`;c.fillStyle='#ffb547';c.shadowColor='#ffb547';c.shadowBlur=12;c.fillText(sub,cx,H*.84);c.restore()}
+}
+
+/* ---------- Mini attitude and heading instruments ---------- */
+function miniCanvas(id){const cv=document.getElementById(id),o={cv,c:cv.getContext('2d'),s:0,d:1};
+  new ResizeObserver(()=>{o.d=devicePixelRatio||1;o.s=cv.clientWidth;cv.width=cv.height=o.s*o.d}).observe(cv);return o}
+const ADI=miniCanvas('adi'),HSI=miniCanvas('hsi');
+function bezel(c,cx,r){let g=c.createLinearGradient(0,0,cx*2,cx*2);g.addColorStop(0,'#4a5464');g.addColorStop(.5,'#141a22');g.addColorStop(1,'#3a4352');
+  c.beginPath();c.arc(cx,cx,r+3,0,TAU);c.strokeStyle=g;c.lineWidth=5;c.stroke()}
+function drawMinis(){
+  if(ADI.s){const {c,s,d}=ADI,cx=s/2,r=s/2-5;c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,s,s);
+    c.save();c.beginPath();c.arc(cx,cx,r,0,TAU);c.clip();c.translate(cx,cx);c.rotate(-FL.bank*Math.PI/180);
+    const py=Math.max(-r*.9,Math.min(r*.9,ppx(Math.max(-5,Math.min(5,FL.p)),r*1.6)));c.translate(0,py);
+    c.fillStyle='#2f6fb0';c.fillRect(-s,-s*2,s*2,s*2);c.fillStyle='#6b4a2a';c.fillRect(-s,0,s*2,s*2);
+    c.strokeStyle='#fff';c.lineWidth=1.5;c.beginPath();c.moveTo(-s,0);c.lineTo(s,0);c.stroke();
+    c.lineWidth=1;for(let k=-4;k<=4;k++){if(!k)continue;const y=-ppx(k,r*1.6),w=k%2?r*.18:r*.32;c.beginPath();c.moveTo(-w,y);c.lineTo(w,y);c.stroke()}
+    c.restore();
+    c.save();c.translate(cx,cx);c.strokeStyle='#ffb547';c.fillStyle='#ffb547';c.lineWidth=2.5;
+    c.beginPath();c.moveTo(-r*.6,0);c.lineTo(-r*.2,0);c.lineTo(-r*.1,r*.1);c.moveTo(r*.6,0);c.lineTo(r*.2,0);c.lineTo(r*.1,r*.1);c.stroke();
+    c.beginPath();c.arc(0,0,2.5,0,TAU);c.fill();
+    c.rotate(-FL.bank*Math.PI/180);c.beginPath();c.moveTo(0,-r+2);c.lineTo(-5,-r+10);c.lineTo(5,-r+10);c.closePath();c.fillStyle='#fff';c.fill();c.restore();
+    bezel(c,cx,r)}
+  if(HSI.s){const {c,s,d}=HSI,cx=s/2,r=s/2-5;c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,s,s);
+    c.beginPath();c.arc(cx,cx,r,0,TAU);c.fillStyle='#070a0f';c.fill();
+    c.save();c.translate(cx,cx);c.rotate(-FL.hdg*Math.PI/180);c.strokeStyle='#c9d2de';c.fillStyle='#c9d2de';c.textAlign='center';c.textBaseline='middle';
+    c.font=`600 ${Math.max(9,r*.2)}px Oxanium, sans-serif`;
+    for(let a=0;a<360;a+=10){c.save();c.rotate(a*Math.PI/180);c.lineWidth=a%30?1:1.6;c.beginPath();c.moveTo(0,-r+2);c.lineTo(0,-r+(a%30?6:10));c.stroke();
+      if(a%30===0){const L={0:'N',90:'E',180:'S',270:'W'}[a]||String(a/10);c.fillStyle=a%90?'#c9d2de':'#ffb547';c.fillText(L,0,-r+19)}c.restore()}
+    c.restore();
+    c.save();c.translate(cx,cx);c.strokeStyle='#ffb547';c.lineWidth=2;c.beginPath();c.moveTo(0,-r);c.lineTo(0,-r+12);c.stroke();
+    c.fillStyle='#7dffb0';c.beginPath();c.moveTo(0,-r*.42);c.lineTo(r*.07,-r*.08);c.lineTo(r*.38,r*.06);c.lineTo(r*.38,r*.14);c.lineTo(r*.07,r*.08);c.lineTo(r*.05,r*.3);
+    c.lineTo(r*.14,r*.38);c.lineTo(-r*.14,r*.38);c.lineTo(-r*.05,r*.3);c.lineTo(-r*.07,r*.08);c.lineTo(-r*.38,r*.14);c.lineTo(-r*.38,r*.06);c.lineTo(-r*.07,-r*.08);c.closePath();c.fill();
+    c.restore();bezel(c,cx,r)}
 }
 
 /* ---------- Live data from data.json (written by the GitHub Action) ---------- */
