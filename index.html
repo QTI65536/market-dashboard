@@ -51,6 +51,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .side-r .side-row{flex-direction:row-reverse}
 .side-row .rail{flex-direction:column;align-items:stretch;flex:1;min-width:0;justify-content:center}
 .side-row .rail button{justify-content:center}
+.side-r .side-row .rail{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:center}
+.side-r .side-row .rail button{padding:9px 6px;font-size:12px;letter-spacing:.05em}
+.side-r .side-row .rail .wide{grid-column:1/-1}
+button[data-phase].on{border-color:var(--amber);color:var(--amber)}
 .mini{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
 .mini canvas{width:clamp(80px,8vw,108px);aspect-ratio:1;display:block}
 .mini span{font-family:var(--f-display);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
@@ -166,12 +170,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
         <button data-scn="selloff">Selloff</button>
         <button data-scn="choppy">Choppy</button>
         <button data-scn="crash">Flash crash</button>
+        <button data-phase="takeoff">Take-off</button>
+        <button data-phase="landing">Landing</button>
+        <button data-phase="landed" class="wide">Landed</button>
       </div>
       </div>
     </div>
   </div>
   </div>
-  <p class="note" id="srcNote">Quotes from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff and Flash crash switch to simulation; press Live data to go back.</p>
+  <p class="note" id="srcNote">Quotes from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff, Choppy and Flash crash switch to simulation; Take-off, Landing and Landed replay the flight phases; press Live data to go back.</p>
 </div>
 
 <script>
@@ -329,29 +336,35 @@ function panes(W,H){const c=W/2,post=Math.max(10,W*.018),top=H*.06;
 function drawSky(now,dt){
   if(!WW)return;const W=WW,H=WH,c=wx;
   const k=RM?1:Math.min(1,dt*2.2);FL.p+=(FL.tp-FL.p)*k;FL.b+=(FL.tb-FL.b)*k;
-  const night=typeof mode!=='undefined'&&mode==='live'&&data&&data.marketOpen===false;
-  const t=now/1000,dive=FL.tp<=-.15;
+  const PH=phaseNow(now),GS=groundState(PH),gmode=PH.ph==='takeoff'||PH.ph==='landing'||PH.ph==='landed',airPh=PH.ph==='flight';
+  FL.PH=PH;FL.GS=GS;
+  const tod=airPh?(typeof mode!=='undefined'&&mode==='live'&&data&&data.marketOpen===false?'night':'day'):(PH.tod||'day');
+  const night=tod==='night',dusk=tod==='dusk';
+  FL.gnd=(FL.gnd||0)+(GS.gnd-(FL.gnd||0))*Math.min(1,dt*4);GS.gnd=FL.gnd;
+  const t=now/1000,dive=FL.tp<=-.15&&airPh;
   // weaving turns, both directions, with a small lean from leadership; spirals harder in a dive
   let wv=13*Math.sin(t/16+FL.ph[0])+7*Math.sin(t/6.3+FL.ph[1])+4*Math.sin(t/37+FL.ph[2]);
   if(RM)wv=0;
-  const canyonOn=(FL.rough||0)>=1.5&&FL.tp>-3;
+  const canyonOn=(FL.rough||0)>=1.5&&FL.tp>-3&&airPh;
   FL.cy=(FL.cy||0)+((canyonOn?1:0)-(FL.cy||0))*Math.min(1,dt*.6);
   const cyBank=Math.max(-40,Math.min(40,canyonSlope((FL.trav||0)+9)*-140));
-  const tb=Math.max(-40,Math.min(40,(wv*(dive?1.5:1)+FL.b*3+(FL.tp<=-3?14*Math.sin(t/4):0))*(1-FL.cy)+cyBank*FL.cy));
+  const tb=gmode?0:Math.max(-40,Math.min(40,(wv*(dive?1.5:1)+FL.b*3+(FL.tp<=-3?14*Math.sin(t/4):0))*(1-FL.cy)+cyBank*FL.cy));
   FL.bank+=(tb-FL.bank)*Math.min(1,dt*1.5);
   FL.hdg=(FL.hdg+FL.bank*dt*.7+360)%360;
-  const pitchPx=ppx(Math.max(-5,Math.min(5,FL.p))*(1-.75*FL.cy),H),bank=FL.bank*Math.PI/180;
+  const tp=gmode?GS.pitch:Math.max(-5,Math.min(5,FL.p))*(1-.75*FL.cy);
+  FL.dp=FL.dp==null?tp:FL.dp+(tp-FL.dp)*Math.min(1,dt*3);
+  const pitchPx=ppx(FL.dp,H),bank=FL.bank*Math.PI/180;
   // forward motion: faster on big moves, fastest in a dive
-  const spd=RM?0:(7+Math.abs(FL.p)*2.2+(FL.p<0?-FL.p*3:0))*(1+1.6*FL.cy);
+  const spd=RM?0:gmode?.6+GS.v*.12:(7+Math.abs(FL.p)*2.2+(FL.p<0?-FL.p*3:0))*(1+1.6*FL.cy);
   const dh=FL.bank*dt*.7*Math.PI/180;FL.trav=(FL.trav||0)+spd*dt;
   // altitude: above the cloud deck on calm/green days, breaking out over the ground in a mayday, skimming it in a crash
   if(FL.alt==null)FL.alt=FL.tp<=-.15?.3:1;
-  FL.alt+=((FL.tp<=-3?0:FL.cy>.5?.1:FL.tp<=-.15?.3:1)-FL.alt)*Math.min(1,dt*.4);
+  FL.alt+=((gmode?1:PH.ph==='approach'?.3:FL.tp<=-3?0:FL.cy>.5?.1:FL.tp<=-.15?.3:1)-FL.alt)*Math.min(1,dt*.4);
   FL.gx=(FL.gx||0)-dh*22;
   CL.forEach(o=>{o.z-=spd*dt;o.x-=dh*o.z;if(o.z<1.2||Math.abs(o.x)>o.z*2+12)Object.assign(o,spawnCloud(false))});
   GL.forEach(o=>{o.z-=spd*dt;o.x-=dh*o.z;if(o.z<1.5){o.z+=ZFAR-2;o.x=(Math.random()-.5)*90}
     if(Math.abs(o.x)>o.z*2+15)o.x=-Math.sign(o.x)*(o.z*2+10)});
-  const shake=RM?0:Math.max(FL.tp<=-1.5?Math.min(6,(-FL.tp-1)*1.4):0,FL.cy*2.2);
+  const shake=RM?0:gmode?(GS.v>1&&GS.agl<EYE0+.05?1:0):Math.max(airPh&&FL.tp<=-1.5?Math.min(6,(-FL.tp-1)*1.4):0,FL.cy*2.2);
   c.setTransform(WD,0,0,WD,0,0);c.clearRect(0,0,W,H);
   c.fillStyle='#07090c';c.fillRect(0,0,W,H);
   const P=panes(W,H);
@@ -361,6 +374,7 @@ function drawSky(now,dt){
   c.save();c.translate(cx,cy);c.rotate(-bank);c.translate(0,pitchPx);
   let g=c.createLinearGradient(0,-H*1.2,0,0);
   if(night){g.addColorStop(0,'#01030a');g.addColorStop(.7,'#071530');g.addColorStop(1,'#1b2f55')}
+  else if(dusk){g.addColorStop(0,'#1c2550');g.addColorStop(.45,'#6c4a78');g.addColorStop(.8,'#ee8a50');g.addColorStop(1,'#ffd08a')}
   else{g.addColorStop(0,'#1d5ea8');g.addColorStop(.65,'#5d9fd8');g.addColorStop(1,'#cfe6f7')}
   c.fillStyle=g;c.fillRect(-R,-R,2*R,R);
   g=c.createLinearGradient(0,0,0,H*1.6);
@@ -374,6 +388,10 @@ function drawSky(now,dt){
     c.globalAlpha=1;
     const mrel=((240-FL.hdg+540)%360)-180;
     c.beginPath();c.arc(mrel/45*W*.5,-H*.62,H*.06,0,TAU);c.fillStyle='#f3f1e6';c.shadowColor='#f3f1e6';c.shadowBlur=30;c.fill();c.shadowBlur=0;
+  }else if(dusk){
+    const srel=((110-FL.hdg+540)%360)-180,sx=srel/45*W*.5,sy=-H*.07;g=c.createRadialGradient(sx,sy,0,sx,sy,H*.7);
+    g.addColorStop(0,'rgba(255,214,140,1)');g.addColorStop(.06,'rgba(255,170,90,.95)');g.addColorStop(.25,'rgba(255,130,70,.35)');g.addColorStop(1,'rgba(255,120,60,0)');
+    c.fillStyle=g;c.fillRect(sx-H*.7,sy-H*.7,H*1.4,H*1.4);
   }else{
     const srel=((150-FL.hdg+540)%360)-180,sx=srel/45*W*.5,sy=-H*.6;g=c.createRadialGradient(sx,sy,0,sx,sy,H*.5);
     g.addColorStop(0,'rgba(255,248,220,1)');g.addColorStop(.08,'rgba(255,240,200,.9)');g.addColorStop(.3,'rgba(255,230,180,.25)');g.addColorStop(1,'rgba(255,230,180,0)');
@@ -430,11 +448,12 @@ function drawSky(now,dt){
     }
     c.restore();
   }
-  c.strokeStyle=night?'rgba(120,160,220,.35)':'rgba(255,255,255,.7)';c.lineWidth=1;c.beginPath();c.moveTo(-R,0);c.lineTo(R,0);c.stroke();
+  if(GS.gnd>.001)drawGround(c,W,H,R,f,GS,PH,night,dusk,now,dt);
+  c.strokeStyle=night?'rgba(120,160,220,.35)':'rgba(255,255,255,.7)';c.lineWidth=1;c.globalAlpha=1-GS.gnd*.8;c.beginPath();c.moveTo(-R,0);c.lineTo(R,0);c.stroke();c.globalAlpha=1;
   // clouds, far to near, growing and sliding outward as they approach
   CL.slice().sort((a,b)=>b.z-a.z).forEach(o=>{
     const r=o.s/o.z*f,sx=o.x/o.z*f,sy=-o.y/o.z*f;
-    const a=Math.min(1,(ZFAR-o.z)/14)*Math.min(1,(o.z-1.2)/5)*(o.y<0?FL.alt:1);if(a<=0||r<1)return;
+    const a=Math.min(1,(ZFAR-o.z)/14)*Math.min(1,(o.z-1.2)/5)*(o.y<0?FL.alt*(1-GS.gnd):1);if(a<=0||r<1)return;
     const m=(o.n-1)/2;
     for(let j=0;j<o.n;j++){const d=j-m,ex=sx+d*r*(.55+o.w*.2),ey=sy+Math.abs(d)*r*.12,rx=r*(.95-Math.abs(d)*.14),ry=r*(.42+o.w*.1);
       c.globalAlpha=a*(night?.28:.55);c.fillStyle=night?'#1c2538':'#b9c6d6';c.beginPath();c.ellipse(ex,ey+r*.08,rx,ry,0,0,TAU);c.fill();
@@ -465,6 +484,7 @@ function drawSky(now,dt){
     });
     c.restore();
   }
+  if(dusk){c.fillStyle='rgba(255,120,50,.09)';c.fillRect(-R,-R,2*R,2*R)}
   c.restore();
   // HUD pitch ladder (rotates with bank, scrolls with pitch)
   c.save();c.translate(cx,cy);c.rotate(-bank);
@@ -494,7 +514,7 @@ function drawSky(now,dt){
   c.font=`600 ${fs}px Oxanium, sans-serif`;c.textAlign='right';c.fillText('LEAD '+sg(FL.b),W*.86,H*.14);
   c.font=`500 ${fs*.72}px "IBM Plex Sans Condensed", sans-serif`;c.fillText('NASDAQ − DOW',W*.86,H*.14+fs*1.15);
   c.restore();
-  if(FL.tp<=-.15&&FL.cy<.5){c.fillStyle='rgba(255,40,80,'+(Math.floor(now/450)%2===0?.14:.05)+')';c.fillRect(0,0,W,H)}
+  if(airPh&&FL.tp<=-.15&&FL.cy<.5){c.fillStyle='rgba(255,40,80,'+(Math.floor(now/450)%2===0?.14:.05)+')';c.fillRect(0,0,W,H)}
   // glass glare + vignette
   g=c.createLinearGradient(0,0,W,H);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(.42,'rgba(255,255,255,0)');
   g.addColorStop(.47,'rgba(255,255,255,.06)');g.addColorStop(.52,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,W,H);
@@ -520,7 +540,15 @@ function drawSky(now,dt){
   const blink=Math.floor(now/450)%2===0;
   let msg,col,sub=null;
   const MAY='#ff3d6e';
-  if(FL.cy>.5&&FL.tp>-3){msg='ROUGH AIR · CANYON RUN';col='#ffb547'}
+  const live=mode==='live';
+  if(PH.ph==='takeoff'){col=HUD;
+    if(PH.tr<=0)msg='CLEARED FOR TAKEOFF · '+(live?'OPEN IN '+mmss(PH.sLeft):'STAND BY');
+    else if(GS.agl<=EYE0+.01)msg=GS.v<36?'TAKEOFF ROLL · '+Math.round(GS.v*3.4)+' KT':'V1 · ROTATE';
+    else msg='WHEELS UP · POSITIVE CLIMB'}
+  else if(PH.ph==='approach'){msg='FINAL APPROACH · CLOSE IN '+mmss(PH.sLeft);col=HUD}
+  else if(PH.ph==='landing'){col=HUD;msg=PH.d>45?'ON GLIDESLOPE · '+(live?'CLOSE IN '+mmss(PH.sLeft):Math.round((GS.agl-EYE0)*32.8)+' FT'):'FLARE · TOUCHDOWN'}
+  else if(PH.ph==='landed'){if(GS.v>.5){msg='TOUCHDOWN · BRAKING';col=HUD}else{msg='LANDED · WELCOME HOME · DAY '+sg(FL.tp)+'%';col=FL.tp>=0?HUD:'#ffb547'}}
+  else if(FL.cy>.5&&FL.tp>-3){msg='ROUGH AIR · CANYON RUN';col='#ffb547'}
   else if(FL.tp>=.15){msg='ALL CLEAR · CLIMBING';col=HUD}
   else if(FL.tp>-.15){msg='LEVEL FLIGHT';col=HUD}
   else{msg='MAYDAY MAYDAY · WE ARE GOING DOWN';col=MAY;if(FL.tp<=-3)sub='PULL UP · PULL UP'}
@@ -534,6 +562,103 @@ function drawSky(now,dt){
   if(sub&&!blink){c.save();c.textAlign='center';c.textBaseline='middle';const mf=Math.max(12,Math.min(W*.03,H*.08));
     c.font=`700 ${mf}px Oxanium, sans-serif`;c.fillStyle='#ffb547';c.shadowColor='#ffb547';c.shadowBlur=12;c.fillText(sub,cx,H*.84);c.restore()}
 }
+
+/* ---------- Flight phases: take-off before the open, landing in the last 10 minutes, landed after the close ---------- */
+const EYE0=.35,TD=30,STOP=TD+33*7.857-2.1*7.857*7.857;
+const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+let etC={t:-1e9,wd:1,m:600};
+function etClk(now){if(now-etC.t>500){const d=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  etC={t:now,wd:d.getDay(),m:d.getHours()*60+d.getMinutes()+d.getSeconds()/60}}return etC}
+function groundState(PH){
+  const o={rz:0,v:0,agl:EYE0,pitch:0,gnd:0};
+  if(PH.ph==='takeoff'){const a=PH.a,tr=PH.tr;o.rz=5;
+    if(tr>0){const vm=75,tA=Math.min(tr,vm/a);o.v=Math.min(a*tr,vm);o.rz=5+.5*a*tA*tA+Math.max(0,tr-tA)*vm;
+      const tlo=48/a;if(tr>tlo){const u=tr-tlo;o.agl=EYE0+7*u+.9*u*u}o.pitch=o.v<36?0:Math.min(2.6,(o.v-36)/12*2.6)}
+    o.gnd=1-Math.min(1,Math.max(0,(o.agl-20)/45))}
+  else if(PH.ph==='landing'){const d=Math.max(0,PH.d);o.v=33;o.rz=TD-d;
+    o.agl=d>45?EYE0+.035*d:EYE0+.035*45*(d/45)**2;o.pitch=d>45?-.5:.9*(1-d/45)-.5*(d/45);o.gnd=PH.gf}
+  else if(PH.ph==='landed'){const t=PH.tl;if(t<7.857){o.v=33-4.2*t;o.rz=TD+33*t-2.1*t*t;o.pitch=t<.6?.5*(1-t/.6):0}else o.rz=STOP;o.gnd=1}
+  return o}
+function phaseNow(now){
+  if(typeof mode==='undefined')return {ph:'flight'};
+  if(mode==='sim'){const S=FL.sim;if(!S)return {ph:'flight'};const e=(now-S.t0)/1000;
+    if(S.ph==='takeoff'){const r={ph:'takeoff',tr:e-2.5,a:6,sLeft:Math.max(0,2.5-e),tod:'day'};
+      if(groundState(r).agl>85){endSimPhase();return {ph:'flight'}}return r}
+    if(S.ph==='landing'){const sl=14-e;if(sl<=0){FL.sim={ph:'landed',t0:now};phaseBtns();return {ph:'landed',tl:0,tod:'dusk'}}
+      return {ph:'landing',d:33*sl,sLeft:sl,gf:Math.min(1,e/1.2),tod:'day'}}
+    return {ph:'landed',tl:e+(S.parked?60:0),tod:'dusk'}}
+  const {wd,m}=etClk(now),tod=(m<390||m>=1050)?'night':m>=960?'dusk':'day';
+  if(wd===0||wd===6)return {ph:'landed',tl:1e4,tod};
+  if(m>=560&&m<570){const sLeft=(570-m)*60;return {ph:'takeoff',tr:40-sLeft,a:1.6,sLeft,tod}}
+  if(m>=570&&m<950)return {ph:'flight'};
+  if(m>=950&&m<960){const sLeft=(960-m)*60;if(sLeft>60)return {ph:'approach',sLeft,tod};
+    return {ph:'landing',d:33*sLeft,sLeft,gf:Math.min(1,(60-sLeft)/12),tod}}
+  return {ph:'landed',tl:m>=960?(m-960)*60:1e4,tod}}
+
+/* ---------- Airfield: runway, buildings and a cheering crowd ---------- */
+const SHIRTS=['#e4572e','#f3a712','#29335c','#669bbc','#a8c686','#e9e3d5','#c1121f','#7b2cbf','#2a9d8f','#ffbe0b'];
+const SKINS=['#f1c9a5','#d9a27c','#b97b56','#8d5a3b','#e8b896','#6b4430'];
+const PEOPLE=Array.from({length:52},(_,i)=>{const left=i<14;
+  return {x:left?-(2.6+Math.random()*2.6):2.5+Math.random()*3.4,za:STOP+5+Math.random()*(left?8:12),shirt:SHIRTS[i%SHIRTS.length],
+    skin:SKINS[(i*7)%SKINS.length],ph:Math.random()*TAU,jump:Math.random()<.45,h:.15+Math.random()*.045,rate:6+Math.random()*4}});
+const CONF=Array.from({length:90},()=>({x:Math.random()-.5,y:Math.random(),vy:.05+Math.random()*.08,vx:(Math.random()-.5)*.03,
+  c:SHIRTS[Math.floor(Math.random()*SHIRTS.length)],r:Math.random()*TAU,vr:(Math.random()-.5)*8}));
+function shade(hex,k){const n=parseInt(hex.slice(1),16);return `rgb(${[n>>16,(n>>8)&255,n&255].map(v=>Math.round(v*k)).join(',')})`}
+function drawGround(c,W,H,R,f,S,PH,night,dusk,now,dt){
+  const t=now/1000,a=S.agl,rz=S.rz,gy=z=>a/z*f;
+  c.save();c.globalAlpha=S.gnd;
+  let g=c.createLinearGradient(0,0,0,H*.9);
+  if(night){g.addColorStop(0,'#141b26');g.addColorStop(.08,'#0b0f14');g.addColorStop(1,'#060807')}
+  else if(dusk){g.addColorStop(0,'#c99a7a');g.addColorStop(.06,'#7a6a42');g.addColorStop(1,'#3d4424')}
+  else{g.addColorStop(0,'#c3cdbd');g.addColorStop(.05,'#8fa66a');g.addColorStop(1,'#4f6e30')}
+  c.fillStyle=g;c.fillRect(-R,0,2*R,R);
+  c.lineWidth=1;for(let k=0;k<30;k++){const z=((k*3-rz)%90+90)%90+.6;c.strokeStyle=`rgba(0,0,0,${Math.min(.12,.6/z)})`;c.beginPath();c.moveTo(-R,gy(z));c.lineTo(R,gy(z));c.stroke()}
+  const quad=(x0,x1,za,zb,fill)=>{let z0=za-rz,z1=zb-rz;if(z1<.45)return;z0=Math.max(z0,.45);if(z0>=z1)return;
+    c.fillStyle=fill;c.beginPath();c.moveTo(x0/z1*f,gy(z1));c.lineTo(x1/z1*f,gy(z1));c.lineTo(x1/z0*f,gy(z0));c.lineTo(x0/z0*f,gy(z0));c.closePath();c.fill()};
+  const mk=night?'rgba(220,225,235,.35)':'#eceff1';
+  quad(2.25,13,STOP-6,STOP+34,night?'#1a1e24':dusk?'#9a8f86':'#aeb2b1');
+  quad(-2.25,2.25,0,1000,night?'#13161b':dusk?'#4a4646':'#474b51');
+  quad(-2.15,-2.05,0,1000,mk);quad(2.05,2.15,0,1000,mk);
+  for(let zz=14;zz<1000;zz+=8){const z=zz-rz;if(z>-4&&z<420)quad(-.06,.06,zz,zz+4,mk)}
+  [-1.9,-1.55,-1.2,-.85,.6,.95,1.3,1.65].forEach(x=>quad(x,x+.25,2,8,mk));
+  quad(-1.4,-.7,TD,TD+5,mk);quad(.7,1.4,TD,TD+5,mk);
+  if(night||dusk){const dot=(x,za,col,r0)=>{const z=za-rz;if(z<.45||z>420)return;const r=Math.max(1,r0/z*f);
+      c.fillStyle=col;c.shadowColor=col;c.shadowBlur=night?8:3;c.beginPath();c.arc(x/z*f,gy(z),r,0,TAU);c.fill()};
+    c.globalAlpha=S.gnd*(night?1:.7);
+    for(let zz=0;zz<=1000;zz+=10){dot(-2.35,zz,'#fff3cf',.03);dot(2.35,zz,'#fff3cf',.03)}
+    for(let x=-2;x<=2.01;x+=.4){dot(x,0,'#5dff8a',.03);dot(x,1000,'#ff4d4d',.03)}
+    for(let zz=-10;zz>=-90;zz-=10)for(let x=-.5;x<=.51;x+=.25)dot(x,zz,'#ffffff',.035);
+    c.shadowBlur=0;c.globalAlpha=S.gnd}
+  let hz=c.createLinearGradient(0,-2,0,H*.1);const hc=night?'20,27,38':dusk?'217,168,138':'212,220,207';
+  hz.addColorStop(0,`rgba(${hc},.9)`);hz.addColorStop(1,`rgba(${hc},0)`);c.fillStyle=hz;c.fillRect(-R,-2,2*R,H*.1+2);
+  const bld=(x0,x1,za,h0,h1,face,roof,win)=>{const z=za-rz;if(z<.8)return;const s=f/z,yb=(a-h0)*s,yt=(a-h1)*s;
+    c.fillStyle=face;c.fillRect(x0*s,yt,(x1-x0)*s,yb-yt);c.fillStyle=roof;c.fillRect(x0*s,yt,(x1-x0)*s,Math.max(1,.1*s));
+    if(win){c.fillStyle=win;const rows=Math.max(1,Math.floor((h1-h0)/.55));for(let r=0;r<rows;r++)c.fillRect(x0*s+.25*s,yt+(r+.4)*.55*s,(x1-x0-.5)*s,.18*s)}};
+  const lit=night||dusk;
+  bld(-24,-9,STOP+44,0,2.4,night?'#1d2229':'#a3abb3',night?'#2a3038':'#7d858e',null);
+  bld(-6.3,-5.9,STOP+36,0,4.6,night?'#20252c':'#c4c8cc',night?'#20252c':'#9aa0a6',null);
+  bld(-6.9,-5.3,STOP+36,4.6,5.4,lit?'#ffd27a':'#2f4b5c',night?'#262b33':'#7d858e',null);
+  bld(5,22,STOP+28,0,1.6,night?'#262b33':'#d5d8dd',night?'#30363f':'#8d939c',lit?'#ffcf7a':'#5d7d99');
+  {const z=STOP+28-rz;if(z>.8){const s=f/z;c.fillStyle=lit?'#ffb547':'#1d2a36';c.font=`700 ${Math.max(6,.32*s)}px Oxanium, sans-serif`;c.textAlign='center';c.textBaseline='bottom';
+    c.fillText('QTI CAPITAL INTERNATIONAL',13.5*s,(a-1.62)*s)}}
+  const landed=PH.ph==='landed',cheer=landed?1:.35;
+  PEOPLE.map(p=>[p,p.za-rz]).filter(([p,z])=>z>.7&&z<70).sort((A,B)=>B[1]-A[1]).forEach(([p,z])=>{
+    const s=f/z,x=p.x*s,jy=p.jump&&landed?-Math.abs(Math.sin(t*p.rate*.7+p.ph))*.05*s:0,base=a*s+jy,h=p.h*s,lw=Math.max(1,.02*s);
+    c.lineCap='round';c.lineWidth=lw;c.strokeStyle=night?'#0d0f14':'#2b3140';
+    c.beginPath();c.moveTo(x-.02*s,base);c.lineTo(x,base-h*.45);c.lineTo(x+.02*s,base);c.stroke();
+    const shirt=night?shade(p.shirt,.55):p.shirt;c.fillStyle=shirt;c.fillRect(x-.028*s,base-h*.84,.056*s,h*.42);
+    const sy=base-h*.8,L=.075*s,wv=Math.sin(t*p.rate+p.ph)*.55;c.strokeStyle=shirt;c.lineWidth=lw*.9;
+    const arms=cheer>.5?[[-1,-2.25+wv],[1,-.9-wv]]:[[-1,1.9],[1,-.95+wv*.8]];
+    arms.forEach(([sd,an])=>{const x0=x+sd*.025*s;c.beginPath();c.moveTo(x0,sy);c.lineTo(x0+Math.cos(an)*L,sy+Math.sin(an)*L);c.stroke()});
+    c.fillStyle=night?shade(p.skin,.55):p.skin;c.beginPath();c.arc(x,base-h*.97,Math.max(1,.026*s),0,TAU);c.fill()});
+  if(landed){const z=STOP+8-rz;if(z>.8){const s=f/z,x0=2.6*s,x1=4.9*s,yt=(a-.36)*s,yb=(a-.22)*s;
+    c.strokeStyle=night?'#555':'#6b5b45';c.lineWidth=Math.max(1,.02*s);c.beginPath();c.moveTo(x0,a*s);c.lineTo(x0,yt);c.moveTo(x1,a*s);c.lineTo(x1,yt);c.stroke();
+    c.fillStyle='#ffb547';c.fillRect(x0,yt,x1-x0,yb-yt);c.fillStyle='#14181d';c.textAlign='center';c.textBaseline='middle';
+    let fs=.085*s;c.font=`700 ${fs}px Oxanium, sans-serif`;const tw=c.measureText('WELCOME HOME, CAPTAIN QTI').width;if(tw>(x1-x0)*.92){fs*=(x1-x0)*.92/tw;c.font=`700 ${fs}px Oxanium, sans-serif`}
+    c.fillText('WELCOME HOME, CAPTAIN QTI',(x0+x1)/2,(yt+yb)/2)}
+    if(S.v<1&&!RM){CONF.forEach(p=>{p.y+=p.vy*dt;p.x+=p.vx*dt;p.r+=p.vr*dt;if(p.y>1){p.y=0;p.x=Math.random()-.5}
+      const px=p.x*W*1.2,py=-H*.55+p.y*H*1.05;c.save();c.translate(px,py);c.rotate(p.r);c.fillStyle=p.c;c.fillRect(-3,-1.5,6,3);c.restore()})}}
+  c.restore()}
 
 /* ---------- Mini attitude and heading instruments ---------- */
 function miniCanvas(id){const cv=document.getElementById(id),o={cv,c:cv.getContext('2d'),s:0,d:1};
@@ -591,7 +716,7 @@ function applyData(){
   document.getElementById('srcNote').textContent=(isIndex
     ?'Index quotes (^DJI, ^GSPC, ^IXIC)'
     :'ETF proxies (DIA, SPY, QQQ) because index quotes are not on this data plan')+
-    ' from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff and Flash crash switch to simulation; press Live data to go back.';
+    ' from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff, Choppy and Flash crash switch to simulation; Take-off, Landing and Landed replay the flight phases; press Live data to go back.';
 }
 
 async function load(){
@@ -614,14 +739,18 @@ simBtn.onclick=()=>{
   enterSim();simBtn.setAttribute('aria-pressed','true');jitter=true;
   simT=setInterval(()=>{const f=randn()*.09;G.forEach(g=>setT(g,g.target+g.beta*f+randn()*.035-.03*(g.target-g.anchor)))},550);
 };
+function phaseBtns(){document.querySelectorAll('[data-phase]').forEach(b=>b.classList.toggle('on',!!FL.sim&&FL.sim.ph===b.dataset.phase))}
+function endSimPhase(){FL.sim=null;phaseBtns()}
+document.querySelectorAll('[data-phase]').forEach(b=>b.onclick=()=>{enterSim();const ph=b.dataset.phase;
+  FL.sim={ph,t0:performance.now(),parked:ph==='landed'};if(ph!=='landed')FL.gnd=ph==='takeoff'?1:0;phaseBtns()});
 const scn={
   rally:()=>G.forEach(g=>{g.anchor=2.2*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
   selloff:()=>G.forEach(g=>{g.anchor=-1.9*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
   choppy:()=>{[[-.7,1.3,-1.6],[.3,1.5,-1.2],[1.4,2.3,-.9]].forEach(([v,hi,lo],i)=>{const g=G[i];g.anchor=v;setT(g,v,hi,lo)})},
   crash:()=>{G.forEach(g=>setT(g,-4.7*g.beta/1.1));setTimeout(()=>{if(mode==='sim')G.forEach(g=>{g.anchor=-3.4*g.beta/1.1;setT(g,g.anchor)})},2200)}
 };
-document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{enterSim();G.forEach(g=>{g.hi=0;g.lo=0});scn[b.dataset.scn]()});
-liveBtn.onclick=()=>{stopSim();mode='live';liveBtn.setAttribute('aria-pressed','true');
+document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{enterSim();endSimPhase();G.forEach(g=>{g.hi=0;g.lo=0});scn[b.dataset.scn]()});
+liveBtn.onclick=()=>{stopSim();endSimPhase();mode='live';liveBtn.setAttribute('aria-pressed','true');
   if(data)applyData();else feed('err','No data yet · showing snapshot');load()};
 
 const ck=document.getElementById('clock');
