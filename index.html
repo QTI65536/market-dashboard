@@ -625,7 +625,7 @@ const EYE0=.35,TD=30,STOP=TD+33*7.857-2.1*7.857*7.857;
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 let etC={t:-1e9,wd:1,m:600};
 function etClk(now){if(now-etC.t>500){const d=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  etC={t:now,wd:d.getDay(),m:d.getHours()*60+d.getMinutes()+d.getSeconds()/60}}return etC}
+  const L=new Date();etC={t:now,wd:d.getDay(),m:d.getHours()*60+d.getMinutes()+d.getSeconds()/60,lm:L.getHours()*60+L.getMinutes()}}return etC}
 function groundState(PH){
   const o={rz:0,v:0,agl:EYE0,pitch:0,gnd:0};
   if(PH.ph==='takeoff'){const a=PH.a,tr=PH.tr;o.rz=5;
@@ -645,8 +645,9 @@ function phaseNow(now){
       return {ph:'landing',d:33*sl,sLeft:sl,gf:Math.min(1,e/1.2),tod:'day'}}
     if(S.ph==='weekend')return {ph:'weekend',tod:'day'};
     return {ph:'landed',tl:e+(S.parked?60:0),tod:'dusk'}}
-  const {wd,m}=etClk(now),tod=(m<390||m>=1050)?'night':m>=960?'dusk':'day';
-  if(wd===0||wd===6)return {ph:'weekend',tod};
+  const {wd,m}=etClk(now),lm=etC.lm==null?m:etC.lm,tod=(lm<390||lm>=1050)?'night':lm>=960?'dusk':'day';
+  // beach weekend: Friday 6:00 PM ET (3:00 PM Pacific) until the Monday 9:20 AM ET take-off
+  if((wd===5&&m>=1080)||wd===6||wd===0||(wd===1&&m<560))return {ph:'weekend',tod};
   if(m>=560&&m<570){const sLeft=(570-m)*60;return {ph:'takeoff',tr:40-sLeft,a:1.6,sLeft,tod}}
   if(m>=570&&m<950)return {ph:'flight'};
   if(m>=950&&m<960){const sLeft=(960-m)*60;if(sLeft>60)return {ph:'approach',sLeft,tod};
