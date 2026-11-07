@@ -25,6 +25,14 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
   display:flex;flex-direction:column;gap:0}
 .windshield{position:relative;height:clamp(160px,24vw,285px);background:#080a0d;border-radius:28px 28px 0 0;overflow:hidden}
 .windshield canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.beach-pilot{position:absolute;left:50%;bottom:-6px;height:78%;width:auto;max-width:62%;transform:translateX(-50%);display:none;pointer-events:none}
+.beach-sign{position:absolute;right:max(16px,4%);top:14px;display:none;flex-direction:column;gap:2px;padding:6px 10px;border-radius:4px;
+  background:rgba(84,52,24,.88);border:2px solid #3b2410;color:#ffe9c2;font-family:var(--f-display);font-size:11px;letter-spacing:.06em;max-width:46%}
+.beach-sign b{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#ffd166}
+@media (max-width:560px){.beach-sign{top:8px;right:8px;padding:3px 8px}.beach-sign span{display:none}.beach-sign b{font-size:11px}}
+#emptySeat{display:none}
+.weekend .beach-pilot{display:block}.weekend .beach-sign{display:flex}
+.weekend #head,.weekend #torso{display:none}.weekend #emptySeat{display:inline}
 .glare{position:relative;z-index:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;
   margin-top:-12px;padding:14px 22px 10px;border-radius:16px 16px 0 0;
   background:linear-gradient(180deg,#22282f 0%,#14181d 55%,#0e1115 100%);
@@ -109,7 +117,39 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
 </head>
 <body>
 <div class="wrap">
-  <div class="windshield"><canvas id="ws" role="img" aria-label="Cockpit windshield: horizon pitches with the average move and banks with Nasdaq versus Dow leadership"></canvas></div>
+  <div class="windshield"><canvas id="ws" role="img" aria-label="Cockpit windshield: horizon pitches with the average move and banks with Nasdaq versus Dow leadership"></canvas>
+    <svg id="beachPilot" class="beach-pilot" viewBox="0 0 300 260" aria-hidden="true">
+      <defs>
+        <pattern id="hawaii" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#e86a33"/><circle cx="6" cy="6" r="3.6" fill="#ffd166"/><circle cx="6" cy="6" r="1.3" fill="#c2410c"/><path d="M14 15 q5 -7 9 0 q-5 6 -9 0z" fill="#2a9d8f"/><circle cx="19" cy="4" r="1.6" fill="#fff4d6"/></pattern>
+        <pattern id="chairStripes" width="26" height="10" patternUnits="userSpaceOnUse"><rect width="13" height="10" fill="#1f7fbf"/><rect x="13" width="13" height="10" fill="#f4f1e8"/></pattern>
+      </defs>
+      <g id="bpTorso"><path d="M24 262 C30 196 66 150 108 144 L192 144 C234 150 270 196 276 262 Z" fill="url(#hawaii)" stroke="#7a2e10" stroke-width="2"/></g>
+      <g id="bpHead">
+        <ellipse cx="72" cy="118" rx="11" ry="22" fill="#3a4538" stroke="#141a15" stroke-width="1.5"/>
+        <ellipse cx="228" cy="118" rx="11" ry="22" fill="#3a4538" stroke="#141a15" stroke-width="1.5"/>
+        <path d="M72 108 C68 48 106 12 150 12 C194 12 232 48 228 108 C228 134 218 152 202 160 L98 160 C82 152 72 134 72 108 Z" fill="url(#shellB)" stroke="#141a15" stroke-width="2"/>
+        <path d="M92 40 C118 22 182 22 208 40" fill="none" stroke="#a9b59f" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+        <circle cx="150" cy="24" r="5" fill="#2d352c" stroke="#a9b59f" stroke-width="1.2"/>
+        <ellipse cx="112" cy="122" rx="26" ry="12" fill="#fff" opacity=".08" transform="rotate(-18 112 122)"/>
+        <path d="M80 74 C110 52 190 52 220 74 L217 94 C190 74 110 74 83 94 Z" fill="#121618" stroke="#ffb547" stroke-width="1.2"/>
+        <text font-family="Oxanium, sans-serif" font-size="12.5" font-weight="700" letter-spacing="1.3" fill="#ffb547"><textPath href="#nameArcB" startOffset="50%" text-anchor="middle">CAPTAIN QTI</textPath></text>
+        <rect x="138" y="140" width="24" height="8" rx="1.5" fill="#d9e0ea" opacity=".55"/>
+        <path d="M98 160 C120 168 180 168 202 160" fill="none" stroke="#0e120f" stroke-width="3"/>
+      </g>
+      <path d="M66 136 L234 136 L248 262 L52 262 Z" fill="url(#chairStripes)" stroke="#6b4423" stroke-width="2"/>
+      <path d="M66 136 L52 262 M234 136 L248 262" stroke="#8a5a32" stroke-width="8" stroke-linecap="round"/>
+      <rect x="58" y="129" width="184" height="10" rx="4" fill="#8a5a32"/>
+      <rect x="0" y="210" width="66" height="11" rx="5" fill="#8a5a32"/><rect x="234" y="210" width="66" height="11" rx="5" fill="#8a5a32"/>
+      <path d="M36 168 L60 172 L58 204 L34 200 Z" fill="url(#hawaii)" stroke="#7a2e10" stroke-width="1.5"/>
+      <path d="M44 202 L14 208" stroke="#d9a27c" stroke-width="13" stroke-linecap="round"/><circle cx="11" cy="207" r="8" fill="#d9a27c"/>
+      <path d="M264 168 L240 172 L242 204 L266 200 Z" fill="url(#hawaii)" stroke="#7a2e10" stroke-width="1.5"/>
+      <path d="M256 202 L280 206" stroke="#d9a27c" stroke-width="13" stroke-linecap="round"/>
+      <ellipse cx="286" cy="194" rx="11" ry="10" fill="#7a4a24" stroke="#4a2a12"/><path d="M279 189 q7 -4 14 0" stroke="#f4e3c2" stroke-width="3" fill="none"/>
+      <path d="M288 188 L296 166" stroke="#ff5d8f" stroke-width="2"/><path d="M286 168 Q296 156 306 168 Z" fill="#ffd166" stroke="#e09f00"/>
+      <circle cx="283" cy="205" r="7.5" fill="#d9a27c"/>
+    </svg>
+    <div class="beach-sign"><b>Market closed</b><span>Captain QTI is off duty · back Monday 9:20 ET</span></div>
+  </div>
   <div class="glare"><span class="gl-label">Flight deck · QTI-1</span><div class="clock" id="clock">--:--:--</div></div>
 
   <div class="panel">
@@ -137,6 +177,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
         <linearGradient id="suitB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#46523f"/><stop offset="1" stop-color="#1f261d"/></linearGradient>
         <path id="nameArcB" d="M84 84 C112 66 188 66 216 84"/>
       </defs>
+      <g id="emptySeat">
+        <path d="M78 220 L88 120 C90 104 104 96 120 96 L180 96 C196 96 210 104 212 120 L222 220 Z" fill="#232830" stroke="#0f1216" stroke-width="2"/>
+        <rect x="104" y="30" width="92" height="96" rx="16" fill="#2c323b" stroke="#0f1216" stroke-width="2"/>
+        <rect x="114" y="40" width="72" height="76" rx="11" fill="#39414c"/>
+        <path d="M118 126 L110 220 M182 126 L190 220" stroke="#4b5a3f" stroke-width="12"/>
+        <path d="M118 126 L110 220 M182 126 L190 220" stroke="#6b7a5c" stroke-width="12" stroke-dasharray="1 9"/>
+        <g transform="rotate(-6 150 70)"><rect x="106" y="54" width="88" height="34" rx="2" fill="#f4ecd6" stroke="#c9b27a"/>
+          <rect x="140" y="50" width="20" height="7" fill="#e6d38f" opacity=".85"/>
+          <text x="150" y="69" text-anchor="middle" font-family="Oxanium, sans-serif" font-size="7.6" font-weight="700" fill="#1d2329">GONE TO THE BEACH</text>
+          <text x="150" y="81" text-anchor="middle" font-family="Oxanium, sans-serif" font-size="6.6" fill="#5a4a2a">BACK MON 9:20 ET</text></g>
+      </g>
       <g id="torso">
         <path d="M0 220 C10 190 58 172 100 170 L200 170 C242 172 290 190 300 220 Z" fill="url(#suitB)"/>
         <path d="M104 172 L94 220 M196 172 L206 220" stroke="#151a16" stroke-width="16"/>
@@ -172,13 +223,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
         <button data-scn="crash">Flash crash</button>
         <button data-phase="takeoff">Take-off</button>
         <button data-phase="landing">Landing</button>
-        <button data-phase="landed" class="wide">Landed</button>
+        <button data-phase="landed">Landed</button>
+        <button data-phase="weekend">Weekend</button>
       </div>
       </div>
     </div>
   </div>
   </div>
-  <p class="note" id="srcNote">Quotes from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff, Choppy and Flash crash switch to simulation; Take-off, Landing and Landed replay the flight phases; press Live data to go back.</p>
+  <p class="note" id="srcNote">Quotes from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff, Choppy and Flash crash switch to simulation; Take-off, Landing, Landed and Weekend replay the flight phases; press Live data to go back.</p>
 </div>
 
 <script>
@@ -300,6 +352,9 @@ function loop(now){
     const by=Math.sin(t*1.7)*2.4+Math.sin(t*4.3)*.6+(Math.random()-.5)*sh,bx=Math.sin(t*.9)*1.2+(Math.random()-.5)*sh;
     headG.setAttribute('transform',`translate(${bx.toFixed(2)} ${by.toFixed(2)}) rotate(${(FL.bank*.22+Math.sin(t*1.3)*1.2).toFixed(2)} 150 160)`);
     torsoG.setAttribute('transform',`translate(0 ${(Math.sin(t*1.7-.6)*.8).toFixed(2)})`)}
+  if(FL.wk&&!RM){const t=now/1000;
+    bpHead.setAttribute('transform',`translate(${(Math.sin(t*.21)*3).toFixed(2)} ${(Math.sin(t*.9)*1.6).toFixed(2)}) rotate(${(Math.sin(t*.23)*5+Math.sin(t*.07)*3).toFixed(2)} 150 150)`);
+    bpTorso.setAttribute('transform',`translate(0 ${(Math.sin(t*.9-.4)*1.2).toFixed(2)})`)}
   requestAnimationFrame(loop);
 }
 
@@ -338,6 +393,8 @@ function drawSky(now,dt){
   const k=RM?1:Math.min(1,dt*2.2);FL.p+=(FL.tp-FL.p)*k;FL.b+=(FL.tb-FL.b)*k;
   const PH=phaseNow(now),GS=groundState(PH),gmode=PH.ph==='takeoff'||PH.ph==='landing'||PH.ph==='landed',airPh=PH.ph==='flight';
   FL.PH=PH;FL.GS=GS;
+  const wk=PH.ph==='weekend';if(wk!==FL.wk){FL.wk=wk;document.documentElement.classList.toggle('weekend',wk)}
+  if(wk){drawBeach(c,W,H,now,dt,PH.tod||'day');return}
   const tod=airPh?(typeof mode!=='undefined'&&mode==='live'&&data&&data.marketOpen===false?'night':'day'):(PH.tod||'day');
   const night=tod==='night',dusk=tod==='dusk';
   FL.gnd=(FL.gnd||0)+(GS.gnd-(FL.gnd||0))*Math.min(1,dt*4);GS.gnd=FL.gnd;
@@ -586,9 +643,10 @@ function phaseNow(now){
       if(groundState(r).agl>85){endSimPhase();return {ph:'flight'}}return r}
     if(S.ph==='landing'){const sl=14-e;if(sl<=0){FL.sim={ph:'landed',t0:now};phaseBtns();return {ph:'landed',tl:0,tod:'dusk'}}
       return {ph:'landing',d:33*sl,sLeft:sl,gf:Math.min(1,e/1.2),tod:'day'}}
+    if(S.ph==='weekend')return {ph:'weekend',tod:'day'};
     return {ph:'landed',tl:e+(S.parked?60:0),tod:'dusk'}}
   const {wd,m}=etClk(now),tod=(m<390||m>=1050)?'night':m>=960?'dusk':'day';
-  if(wd===0||wd===6)return {ph:'landed',tl:1e4,tod};
+  if(wd===0||wd===6)return {ph:'weekend',tod};
   if(m>=560&&m<570){const sLeft=(570-m)*60;return {ph:'takeoff',tr:40-sLeft,a:1.6,sLeft,tod}}
   if(m>=570&&m<950)return {ph:'flight'};
   if(m>=950&&m<960){const sLeft=(960-m)*60;if(sLeft>60)return {ph:'approach',sLeft,tod};
@@ -660,6 +718,91 @@ function drawGround(c,W,H,R,f,S,PH,night,dusk,now,dt){
       const px=p.x*W*1.2,py=-H*.55+p.y*H*1.05;c.save();c.translate(px,py);c.rotate(p.r);c.fillStyle=p.c;c.fillRect(-3,-1.5,6,3);c.restore()})}}
   c.restore()}
 
+/* ---------- Weekend: Captain QTI on the beach, watching the waves ---------- */
+const bpHead=document.getElementById('bpHead'),bpTorso=document.getElementById('bpTorso'),beachPilot=document.getElementById('beachPilot');
+const GULLS=Array.from({length:5},()=>({x:Math.random(),y:.08+Math.random()*.2,s:.6+Math.random()*.7,v:.012+Math.random()*.02,ph:Math.random()*TAU}));
+const BCL=Array.from({length:7},()=>({x:Math.random()*1.2-.1,y:.04+Math.random()*.2,s:.5+Math.random()*.9,v:.004+Math.random()*.007}));
+const GLIT=Array.from({length:80},()=>({u:Math.random(),d:Math.random(),k:1+Math.random()*4,ph:Math.random()*TAU}));
+const FOAM=Array.from({length:70},()=>({x:Math.random(),r:Math.random(),ph:Math.random()*TAU}));
+function drawBeach(c,W,H,now,dt,tod){
+  const t=now/1000,night=tod==='night',dusk=tod==='dusk',hy=H*.40,shore=H*.64;
+  if(tod!==FL.btod){FL.btod=tod;beachPilot.style.filter=night?'brightness(.42) saturate(.6)':dusk?'sepia(.2) saturate(1.15) brightness(.95)':''}
+  c.setTransform(WD,0,0,WD,0,0);c.clearRect(0,0,W,H);
+  let g=c.createLinearGradient(0,0,0,hy);
+  if(night){g.addColorStop(0,'#02040c');g.addColorStop(1,'#0f2342')}
+  else if(dusk){g.addColorStop(0,'#232a5c');g.addColorStop(.55,'#9a5a7a');g.addColorStop(1,'#f6a062')}
+  else{g.addColorStop(0,'#2f78c0');g.addColorStop(1,'#bfe3f7')}
+  c.fillStyle=g;c.fillRect(0,0,W,hy+1);
+  const sunX=W*.66,sunY=night?H*.12:dusk?hy-H*.02:H*.11;
+  if(night){for(let i=0;i<120;i++){const x=(Math.sin(i*91.7)*.5+.5)*W,y=(Math.sin(i*37.3)*.5+.5)*hy*.95;c.globalAlpha=.3+.6*Math.abs(Math.sin(t*.8+i));c.fillStyle='#e8f0ff';c.fillRect(x,y,1.3,1.3)}
+    c.globalAlpha=1;c.fillStyle='#f3f1e6';c.shadowColor='#f3f1e6';c.shadowBlur=24;c.beginPath();c.arc(sunX,sunY,H*.045,0,TAU);c.fill();c.shadowBlur=0}
+  else{g=c.createRadialGradient(sunX,sunY,0,sunX,sunY,H*(dusk?.6:.4));
+    g.addColorStop(0,dusk?'rgba(255,214,140,1)':'rgba(255,250,225,1)');g.addColorStop(.1,dusk?'rgba(255,160,80,.95)':'rgba(255,244,200,.9)');g.addColorStop(.35,'rgba(255,200,140,.25)');g.addColorStop(1,'rgba(255,200,140,0)');
+    c.save();c.beginPath();c.rect(0,0,W,hy);c.clip();c.fillStyle=g;c.fillRect(0,0,W,H);c.restore()}
+  BCL.forEach(o=>{o.x+=o.v*dt;if(o.x>1.15)o.x=-.15;const x=o.x*W,y=o.y*H,r=o.s*H*.06;
+    c.fillStyle=night?'rgba(60,72,100,.35)':dusk?'rgba(255,200,190,.75)':'rgba(255,255,255,.9)';
+    for(let j=-2;j<=2;j++){c.beginPath();c.ellipse(x+j*r*.7,y+Math.abs(j)*r*.15,r*(1-Math.abs(j)*.15),r*.45,0,0,TAU);c.fill()}});
+  // sea
+  g=c.createLinearGradient(0,hy,0,shore);
+  if(night){g.addColorStop(0,'#071528');g.addColorStop(1,'#0e2a40')}
+  else if(dusk){g.addColorStop(0,'#5a4f7a');g.addColorStop(.6,'#9a7a8a');g.addColorStop(1,'#d9a487')}
+  else{g.addColorStop(0,'#1c5a94');g.addColorStop(.55,'#2b87b6');g.addColorStop(1,'#47c2c6')}
+  c.fillStyle=g;c.fillRect(0,hy,W,shore-hy+2);
+  c.strokeStyle=night?'rgba(150,180,220,.25)':'rgba(255,255,255,.45)';c.lineWidth=1;c.beginPath();c.moveTo(0,hy);c.lineTo(W,hy);c.stroke();
+  GLIT.forEach(o=>{const d=o.d,y=hy+(shore-hy)*d*.9,x=sunX+(o.u-.5)*W*(.08+.35*d),a=Math.max(0,Math.sin(t*o.k+o.ph));
+    c.globalAlpha=a*(night?.5:.8);c.fillStyle=night?'#dfe8ff':dusk?'#ffd29a':'#ffffff';c.fillRect(x,y,4+8*d,1.2)});c.globalAlpha=1;
+  for(let k=0;k<9;k++){const p=((t/9+k/9)%1),y=hy+(shore-hy)*Math.pow(p,1.7);
+    c.strokeStyle=night?`rgba(160,190,230,${.08+.18*p})`:`rgba(255,255,255,${.1+.3*p})`;c.lineWidth=.6+1.6*p;c.beginPath();
+    for(let x=0;x<=W;x+=12){const yy=y+Math.sin(x/(40+60*p)+k+t*.6)*(1+3*p);x?c.lineTo(x,yy):c.moveTo(x,yy)}c.stroke()}
+  // the breaker and the swash running up the sand
+  const T=7,u=(t%T)/T,ease=v=>v*v*(3-2*v),run=H*.15;
+  let edge=0;if(u>.5&&u<.78)edge=ease((u-.5)/.28);else if(u>=.78)edge=1-ease((u-.78)/.22);
+  // sand
+  g=c.createLinearGradient(0,shore,0,H);
+  if(night){g.addColorStop(0,'#2a2c33');g.addColorStop(1,'#16171b')}
+  else if(dusk){g.addColorStop(0,'#c99a72');g.addColorStop(1,'#a1734e')}
+  else{g.addColorStop(0,'#e8d1a2');g.addColorStop(1,'#d2b07a')}
+  c.fillStyle=g;c.fillRect(0,shore,W,H-shore);
+  c.fillStyle=night?'rgba(10,12,18,.45)':'rgba(120,90,50,.28)';c.beginPath();c.moveTo(0,shore);
+  for(let x=0;x<=W;x+=10)c.lineTo(x,shore+run*1.02+Math.sin(x/70+1.3)*5);c.lineTo(W,shore);c.closePath();c.fill();
+  if(edge>0){const ey=x=>shore+run*edge+Math.sin(x/55+t*.7)*6*edge+Math.sin(x/17)*2;
+    c.fillStyle=night?`rgba(40,80,110,${.55*edge+.2})`:dusk?`rgba(200,170,170,${.5*edge+.2})`:`rgba(110,210,215,${.5*edge+.25})`;
+    c.beginPath();c.moveTo(0,shore-1);for(let x=0;x<=W;x+=8)c.lineTo(x,ey(x));c.lineTo(W,shore-1);c.closePath();c.fill();
+    c.strokeStyle=night?'rgba(220,235,255,.45)':'rgba(255,255,255,.95)';c.lineWidth=2+2*edge;c.beginPath();for(let x=0;x<=W;x+=8){x?c.lineTo(x,ey(x)):c.moveTo(x,ey(x))}c.stroke();
+    FOAM.forEach(o=>{const x=o.x*W,y=shore+(ey(x)-shore)*o.r;c.globalAlpha=edge*(.4+.4*Math.sin(t*3+o.ph));c.fillStyle='#fff';c.beginPath();c.arc(x,y,1+1.6*o.r,0,TAU);c.fill()});c.globalAlpha=1}
+  {const cu=Math.min(1,u/.5),cy0=hy+(shore-hy)*.5,cy=cy0+(shore-H*.012-cy0)*ease(cu),hh=H*(.008+.045*cu*cu),broke=u>=.46;
+    if(u<.62){const fade=u<.5?1:1-(u-.5)/.12,wav=x=>cy+Math.sin(x/90+t*.5)*3;
+      c.globalAlpha=fade;c.fillStyle=night?'#0a2238':dusk?'#7a6a86':'#1f7fa6';c.beginPath();
+      for(let x=0;x<=W;x+=10){x?c.lineTo(x,wav(x)-hh):c.moveTo(x,wav(x)-hh)}for(let x=W;x>=0;x-=10)c.lineTo(x,wav(x));c.closePath();c.fill();
+      c.strokeStyle=night?'rgba(220,235,255,.6)':'#ffffff';c.lineWidth=broke?6:2+3*cu;c.beginPath();
+      for(let x=0;x<=W;x+=10){const y=wav(x)-hh+(broke?Math.sin(x/9+t*9)*3:0);x?c.lineTo(x,y):c.moveTo(x,y)}c.stroke();
+      if(broke){for(let i=0;i<60;i++){const x=(i/60)*W+Math.sin(i*7.1)*20,y=wav(x)-hh-Math.abs(Math.sin(i*3.3+t*4))*H*.05*fade;
+        c.fillStyle='rgba(255,255,255,.8)';c.beginPath();c.arc(x,y,1.5+Math.abs(Math.sin(i))*2.5,0,TAU);c.fill()}}
+      c.globalAlpha=1}}
+  // palm tree on the left
+  {const bx=W*.06,by=H*1.02,tx=W*.15,ty=H*.2,sw=Math.sin(t*.9)*.04;
+    c.strokeStyle=night?'#1d1a16':'#7a5a3a';c.lineCap='round';
+    for(let i=0;i<14;i++){const a=i/14,b=(i+1)/14,P=v=>[bx+(tx-bx)*v+Math.sin(v*2.2)*W*.03,by+(ty-by)*v];
+      c.lineWidth=Math.max(4,H*.05*(1-a*.55));const [x0,y0]=P(a),[x1,y1]=P(b);c.beginPath();c.moveTo(x0,y0);c.lineTo(x1,y1);c.stroke()}
+    const fx=tx+Math.sin(2.2)*W*.03,fy=ty;c.fillStyle=night?'#0f1a12':dusk?'#3d5a2a':'#2f7d3a';
+    [-2.9,-2.4,-1.9,-1.3,-.7,-.2,.3].forEach((a0,i)=>{const a=a0+Math.sin(t*1.1+i)*.05+sw,L=H*(.26+.04*(i%2));
+      const ex=fx+Math.cos(a)*L,ey=fy+Math.sin(a)*L*.55+L*.35,mx=fx+Math.cos(a)*L*.5,my=fy+Math.sin(a)*L*.4-L*.08;
+      c.beginPath();c.moveTo(fx,fy);c.quadraticCurveTo(mx,my-L*.12,ex,ey);c.quadraticCurveTo(mx,my+L*.06,fx,fy);c.fill()});
+    c.fillStyle=night?'#2a1d10':'#6b4423';[[-8,8],[6,10],[0,16]].forEach(([dx,dy])=>{c.beginPath();c.arc(fx+dx,fy+dy,H*.018,0,TAU);c.fill()})}
+  // beach umbrella on the right
+  {const px=W*.9,py=H*1.01,tx=W*.85,ty=H*.5,r=H*.22;
+    c.strokeStyle=night?'#444':'#d9d9d9';c.lineWidth=4;c.beginPath();c.moveTo(px,py);c.lineTo(tx,ty);c.stroke();
+    c.save();c.translate(tx,ty);c.rotate(-.18);
+    for(let i=0;i<8;i++){const a0=Math.PI+i*Math.PI/8,a1=a0+Math.PI/8;c.fillStyle=(i%2?(night?'#5a5a5a':'#ffffff'):(night?'#5a1a24':'#e63946'));
+      c.beginPath();c.moveTo(0,0);c.ellipse(0,0,r,r*.42,0,a0,a1);c.closePath();c.fill()}
+    c.restore()}
+  // seagulls
+  if(!night)GULLS.forEach(o=>{o.x+=o.v*dt;if(o.x>1.1)o.x=-.1;const x=o.x*W,y=o.y*H+Math.sin(t*.8+o.ph)*6,s=o.s*H*.035,fl=Math.sin(t*6+o.ph)*.35;
+    c.strokeStyle=dusk?'#3a2a3a':'#2b3440';c.lineWidth=1.6;c.beginPath();c.moveTo(x-s,y-s*(.2+fl));c.quadraticCurveTo(x-s*.4,y-s*.6,x,y);c.quadraticCurveTo(x+s*.4,y-s*.6,x+s,y-s*(.2+fl));c.stroke()});
+  if(dusk){c.fillStyle='rgba(255,120,50,.08)';c.fillRect(0,0,W,H)}
+  g=c.createRadialGradient(W/2,H*.5,H*.3,W/2,H*.5,W*.7);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.35)');c.fillStyle=g;c.fillRect(0,0,W,H);
+}
+
 /* ---------- Mini attitude and heading instruments ---------- */
 function miniCanvas(id){const cv=document.getElementById(id),o={cv,c:cv.getContext('2d'),s:0,d:1};
   new ResizeObserver(()=>{o.d=devicePixelRatio||1;o.s=cv.clientWidth;cv.width=cv.height=o.s*o.d}).observe(cv);return o}
@@ -716,7 +859,7 @@ function applyData(){
   document.getElementById('srcNote').textContent=(isIndex
     ?'Index quotes (^DJI, ^GSPC, ^IXIC)'
     :'ETF proxies (DIA, SPY, QQQ) because index quotes are not on this data plan')+
-    ' from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff, Choppy and Flash crash switch to simulation; Take-off, Landing and Landed replay the flight phases; press Live data to go back.';
+    ' from Financial Modeling Prep, refreshed about every 10 minutes during market hours. Rally, Selloff, Choppy and Flash crash switch to simulation; Take-off, Landing, Landed and Weekend replay the flight phases; press Live data to go back.';
 }
 
 async function load(){
@@ -742,7 +885,7 @@ simBtn.onclick=()=>{
 function phaseBtns(){document.querySelectorAll('[data-phase]').forEach(b=>b.classList.toggle('on',!!FL.sim&&FL.sim.ph===b.dataset.phase))}
 function endSimPhase(){FL.sim=null;phaseBtns()}
 document.querySelectorAll('[data-phase]').forEach(b=>b.onclick=()=>{enterSim();const ph=b.dataset.phase;
-  FL.sim={ph,t0:performance.now(),parked:ph==='landed'};if(ph!=='landed')FL.gnd=ph==='takeoff'?1:0;phaseBtns()});
+  FL.sim={ph,t0:performance.now(),parked:ph==='landed'};if(ph==='weekend')FL.gnd=0;if(ph!=='landed')FL.gnd=ph==='takeoff'?1:0;phaseBtns()});
 const scn={
   rally:()=>G.forEach(g=>{g.anchor=2.2*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
   selloff:()=>G.forEach(g=>{g.anchor=-1.9*g.beta+(Math.random()-.5)*.3;setT(g,g.anchor)}),
