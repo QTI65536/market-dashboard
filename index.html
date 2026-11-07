@@ -901,6 +901,14 @@ const ck=document.getElementById('clock');
 const tick=()=>ck.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 tick();setInterval(tick,1000);
 
+/* ---------- Self-update: open tabs reload themselves when a new version of the page is published ---------- */
+let pageSig=null;
+async function pageHash(){const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(r.status);
+  const t=await r.text();let h=2166136261;for(let i=0;i<t.length;i++)h=Math.imul(h^t.charCodeAt(i),16777619);return h>>>0}
+async function checkUpdate(){try{const h=await pageHash();if(pageSig===null)pageSig=h;else if(h!==pageSig)location.reload()}catch(e){}}
+checkUpdate();setInterval(checkUpdate,3*60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate()});
+
 G.forEach(g=>setT(g,g.v));
 load();
 requestAnimationFrame(loop);
